@@ -1,0 +1,12 @@
+# Ignore Gradle project-specific cache directory
+.gradle
+.idea
+
+# Ignore Gradle build output directory
+build
+build-natives
+
+# Natives libreries (heavy files)
+android-backend/libs
+dist
+bin

@@ -1,0 +1,13 @@
+apply plugin: "java"
+
+sourceSets.main.java.srcDirs = ["src"]
+sourceSets.main.resources.srcDirs = ["res"]
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_1_8
+	targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+jar {
+	archivesBaseName = 'forcex'
+}

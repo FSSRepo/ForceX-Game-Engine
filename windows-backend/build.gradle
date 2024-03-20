@@ -1,0 +1,17 @@
+apply plugin: "java"
+
+sourceSets.main.java.srcDirs = ["src"]
+
+jar {
+	archivesBaseName = 'forcex-windows-backend'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+task copyAssets(type: Copy) {
+    from '../android-backend/assets'
+    into '../dist/windows/data'
+}
