@@ -1,27 +1,30 @@
 # ForceX-Game-Engine
 This powerful engine will be a great project. You will be able to create decent games for multiple platforms. 
 
-## Functions and capabilities
+# Functions
 
 Android 4.1 to up support.
 
 Windows 7 to up support (32 bits, 64 bits).
 
-## Requeriments and build
+# Requeriments and build
 
 You need:
 
 For desktop build (windows and linux):
 
-    - CMake
-    - JDK 8 or 11
+- CMake
+- JDK 8 or 11
 
 For android build:
-    - CMake
-    - JDK 8 or 11
-    - Android SDK and NDK
 
-To build this project just execute this commands:
+- CMake
+- JDK 8 or 11
+- Android SDK and NDK
+
+## Build Desktop
+
+To build this project just execute these commands:
 
 ```bash
 # desktop
@@ -29,7 +32,7 @@ build
 build --dist
 ```
 
-### Build android
+## Build android
 
 If you have ANDROID_NDK defined:
 
@@ -59,6 +62,50 @@ build --android --oal --reconfig
 build --android --dist
 ```
 
-## Integration
+# Integration
 
+To integrate ForceX into your applications, you must have built the respective files.
 
+### Windows and Linux
+
+1. Copy the files from `dist/(windows|linux)/libs` to your libs `.jar` of your app.
+
+2. After you build your application jar, you have to copy the native libraries and `data` directory from `dist/(windows|linux)` to your .jar directory, like this:
+
+```bash
+# windows
+outputs
+    data
+    app.jar
+    forcex.dll
+    lwjgl.dll
+
+# linux
+outputs
+    data
+    app.jar
+    libforcex.so
+    lwjgl.so
+```
+
+### Android
+
+1. Copy the files from `dist/android` to your libs directory of your app.
+
+```bash
+app
+    src
+        main
+    libs
+        forcex.jar
+        android-backend-release.aar
+    build.gradle
+```
+
+2. Import in your `build.gradle` in your dependencies block:
+
+```java
+dependencies {
+    implementation files('libs/android-backend-release.aar', 'libs/forcex.jar')
+}
+```
