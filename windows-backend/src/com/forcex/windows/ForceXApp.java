@@ -1,18 +1,19 @@
 package com.forcex.windows;
 
-import com.forcex.FX;
-import com.forcex.app.Game;
-import com.forcex.core.SystemDevice;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+
 import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.ContextAttribs;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.PixelFormat;
-import java.nio.*;
-import com.forcex.utils.*;
-import com.forcex.app.*;
-import java.util.*;
-import java.io.*;
+
+import com.forcex.FX;
+import com.forcex.app.Game;
+import com.forcex.app.InputListener;
+import com.forcex.core.SystemDevice;
+import com.forcex.utils.Image;
 
 public class ForceXApp implements SystemDevice{
 
@@ -33,15 +34,14 @@ public class ForceXApp implements SystemDevice{
 		initialize(game,title,1280,720,fullscreen,vsync);
 	}
 	
-    public void initialize(Game game,String title,int width,int height,
-		boolean fullscreen, boolean vsync) {
+    public void initialize(Game game, String title, int width,int height, boolean fullscreen, boolean vsync) {
 		FX.homeDirectory = "data/";
 		ContextAttribs attribs = new ContextAttribs(3,0);
         attribs.withForwardCompatible(true);
-        try{
+        try {
             setDisplayMode(width,height,fullscreen);
 			Display.create(new PixelFormat(),attribs);
-        }catch(LWJGLException e){
+        } catch(LWJGLException e) {
 			e.printStackTrace();
 		}
 		inputs = new ArrayList<>();
@@ -51,18 +51,10 @@ public class ForceXApp implements SystemDevice{
 		FX.alc = new WindowsSound();
 		Display.setVSyncEnabled(vsync);
 		Display.setTitle(title);
-                
 		render.create();
     }
 	
-	private boolean checkFiles(){
-		if(!new File(FX.homeDirectory).exists()){
-			return true; 
-		}
-		return false;
-	}
-	
-	public void setTitle(String text){
+	public void setTitle(String text) {
 		Display.setTitle(text);
 	}
 
@@ -71,7 +63,7 @@ public class ForceXApp implements SystemDevice{
 		this.inputs.add(input);
 	}
 	
-	public void setIcon(String path){
+	public void setIcon(String path) {
 		ByteBuffer[] icons = new ByteBuffer[1];
 		icons[0] = new Image(path).getBuffer();
 		Display.setIcon(icons);

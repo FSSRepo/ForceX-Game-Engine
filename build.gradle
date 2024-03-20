@@ -23,7 +23,6 @@ project(":android-backend") {
     apply plugin: 'com.android.library'
 
     dependencies {
-        implementation fileTree(include: ['*.jar'], dir: 'libs')
         implementation project(":forcex")
     }
 }
@@ -35,19 +34,9 @@ project(":forcex") {
 project(":windows-backend") {
     apply plugin: "java-library"
 
-    repositories {
-        flatDir {
-            dirs 'libs'
-        }
-    }
-
     dependencies {
         implementation project(":forcex")
-        implementation ':jinput'
-        implementation ':lwjgl'
-        implementation ':lwjgl_util'
-        implementation ':lwjgl_util_applet'
-        implementation ':lzma'
+        implementation fileTree(include: ['*.jar'], dir: 'libs')
     }
 }
 

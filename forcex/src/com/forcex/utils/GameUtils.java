@@ -1,8 +1,7 @@
 package com.forcex.utils;
-import com.forcex.core.*;
-import com.forcex.math.*;
-import com.forcex.gfx3d.*;
-import com.forcex.*;
+import com.forcex.FX;
+import com.forcex.math.Vector2f;
+import com.forcex.math.Vector3f;
 
 public class GameUtils
 {

@@ -1,5 +1,4 @@
 package com.forcex.rte.utils;
-import com.forcex.utils.*;
 
 public class RTPixel {
 	public RTColor color;

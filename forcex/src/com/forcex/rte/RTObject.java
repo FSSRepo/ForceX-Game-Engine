@@ -1,8 +1,8 @@
 package com.forcex.rte;
-import com.forcex.collision.*;
-import com.forcex.math.*;
-import com.forcex.rte.utils.*;
-import java.util.*;
+import java.util.ArrayList;
+
+import com.forcex.math.Ray;
+import com.forcex.math.Vector3f;
 
 public abstract class RTObject {
 	protected boolean arePrimitives = true;

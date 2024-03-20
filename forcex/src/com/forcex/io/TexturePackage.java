@@ -72,9 +72,9 @@ public class TexturePackage{
 				TextureBuffer[] bufs = new TextureBuffer[tex.mipmap];
 				short w = tex.width;
 				short h = tex.height;
-				for(byte m = 0; m < tex.mipmap;m++){
+				for(byte m = 0; m < tex.mipmap; m++){
 					int sz = is.readInt();
-					bufs[m] = processTexture(is.readByteArray(sz),tex);
+					bufs[m] = processTexture(is.readByteArray(sz), tex);
 					w /= 2;
 					h /= 2;
 				}

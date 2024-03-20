@@ -1,8 +1,6 @@
 package com.forcex.utils;
 import java.util.*;
 import com.forcex.io.*;
-import java.io.*;
-import com.forcex.*;
 
 public class LanguageString {
 	HashMap<String,String> lines = new HashMap<>();

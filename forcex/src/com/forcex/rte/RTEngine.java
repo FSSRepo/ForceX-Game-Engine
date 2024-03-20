@@ -1,9 +1,9 @@
 package com.forcex.rte;
-import com.forcex.utils.*;
-import com.forcex.math.*;
-import com.forcex.rte.utils.*;
-import com.forcex.gui.*;
-import com.forcex.rte.objects.*;
+import com.forcex.math.Maths;
+import com.forcex.math.Ray;
+import com.forcex.math.Vector3f;
+import com.forcex.rte.objects.RTMesh;
+import com.forcex.rte.utils.RTPixel;
 
 public class RTEngine {
 	RTScene scene;

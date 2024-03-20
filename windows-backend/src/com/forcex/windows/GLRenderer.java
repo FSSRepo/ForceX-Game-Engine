@@ -1,16 +1,18 @@
 package com.forcex.windows;
 
+import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Mouse;
+import org.lwjgl.opengl.Display;
+
+import com.forcex.FX;
+import com.forcex.app.EventType;
 import com.forcex.app.Game;
+import com.forcex.app.InputListener;
+import com.forcex.app.Key;
 import com.forcex.app.threading.Task;
+import com.forcex.core.GL;
 import com.forcex.core.gpu.GPUDevice;
-import org.lwjgl.opengl.*;
-import org.lwjgl.*;
-import java.util.*;
-import com.forcex.*;
-import com.forcex.core.*;
-import org.lwjgl.input.*;
-import com.forcex.app.*;
-import com.forcex.utils.*;
+import com.forcex.utils.PoolArray;
 
 public class GLRenderer implements GPUDevice {
 	Game game;

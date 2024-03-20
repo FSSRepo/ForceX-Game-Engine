@@ -88,6 +88,14 @@ outputs
     lwjgl.so
 ```
 
+2. Import the libraries in your `build.gradle` in your dependencies block:
+
+```java
+dependencies {
+    implementation files('libs/forcex-windows-backend.jar', 'libs/forcex.jar', 'libs/jinput.jar', 'libs/lwjgl_util_applet.jar', 'libs/lwjgl_util.jar', , 'libs/lwjgl.jar', 'libs/lzma.jar')
+}
+```
+
 ### Android
 
 1. Copy the files from `dist/android` to your libs directory of your app.
@@ -102,7 +110,7 @@ app
     build.gradle
 ```
 
-2. Import in your `build.gradle` in your dependencies block:
+2. Import the libraries in your `build.gradle` in your dependencies block:
 
 ```java
 dependencies {

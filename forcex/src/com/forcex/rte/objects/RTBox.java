@@ -1,7 +1,8 @@
 package com.forcex.rte.objects;
-import com.forcex.math.*;
-import com.forcex.utils.*;
-import com.forcex.rte.*;
+import com.forcex.math.Ray;
+import com.forcex.math.Vector3f;
+import com.forcex.rte.RTMaterial;
+import com.forcex.rte.RTObject;
 
 public class RTBox extends RTObject {
 

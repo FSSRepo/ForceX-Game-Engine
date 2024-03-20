@@ -1,13 +1,17 @@
 package com.forcex.io;
-import com.forcex.utils.*;
-import com.forcex.core.*;
-import com.forcex.*;
-import com.forcex.core.gpu.*;
-import com.forcex.app.threading.*;
-import java.io.*;
-import java.util.*;
-import java.util.zip.*;
-import com.forcex.gui.*;
+import java.util.zip.DataFormatException;
+import java.util.zip.Deflater;
+import java.util.zip.Inflater;
+
+import com.forcex.FX;
+import com.forcex.app.threading.Task;
+import com.forcex.core.CoreJni;
+import com.forcex.core.GL;
+import com.forcex.core.gpu.Texture;
+import com.forcex.gui.Toast;
+import com.forcex.utils.Image;
+import com.forcex.utils.Logger;
+import com.forcex.utils.VideoStack;
 
 public class VideoClip
 {
@@ -43,12 +47,12 @@ public class VideoClip
 		next_frame = new byte[blockSize];
 	}
 	
-	public int init(){
+	public int init() {
 		texture = Texture.genTextureWhite();
 		return texture;
 	}
 	
-	public void play(){
+	public void play() {
 		play = true;
 		if(listener != null){
 			listener.play();
@@ -233,7 +237,7 @@ public class VideoClip
 					}
 					zip = encode(bs.data);
 					os.writeInt(zip.length);
-					os.writeByteArray(zip); 
+					os.writeByteArray(zip);
 				}
 				zip = null;
 				buffer = null;

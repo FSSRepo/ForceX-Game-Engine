@@ -1,5 +1,4 @@
 package com.forcex.utils;
-import java.util.*;
 
 public class PoolArray<T> {
 	private T[] buffer;
