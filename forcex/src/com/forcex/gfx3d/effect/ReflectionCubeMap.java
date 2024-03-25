@@ -5,9 +5,9 @@ import com.forcex.*;
 import com.forcex.math.*;
 
 public class ReflectionCubeMap {
-    Camera camera;
-    int cubemap,fbo,rbo;
-    GL gl = FX.gl;
+    private final Camera camera;
+    private int cube_map, fbo, rbo;
+    private final GL gl = FX.gl;
     public int size = 128;
 
     public ReflectionCubeMap() {
@@ -15,8 +15,8 @@ public class ReflectionCubeMap {
     }
 	
 	public void create(){
-		cubemap = gl.glGenTexture();
-        gl.glBindTexture(GL.GL_TEXTURE_CUBE_MAP, cubemap);
+		cube_map = gl.glGenTexture();
+        gl.glBindTexture(GL.GL_TEXTURE_CUBE_MAP, cube_map);
         for (int i = 0; i < 6; i++) {
             gl.glEmptyTexture(GL.GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, size, size, GL.GL_RGB, GL.GL_RGB, GL.GL_UNSIGNED_BYTE);
         }
@@ -46,7 +46,7 @@ public class ReflectionCubeMap {
     public Camera getCamera(int facing) {
 		camera.setDirection(facing);
 		camera.update();
-        gl.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0, GL.GL_TEXTURE_CUBE_MAP_POSITIVE_X + facing, cubemap);
+        gl.glFramebufferTexture2D(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0, GL.GL_TEXTURE_CUBE_MAP_POSITIVE_X + facing, cube_map);
         gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
         return camera;
     }
@@ -76,6 +76,6 @@ public class ReflectionCubeMap {
     }
 
     public int getTextureCubeMap() {
-        return cubemap;
+        return cube_map;
     }
 }

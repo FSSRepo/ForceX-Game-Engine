@@ -6,15 +6,16 @@ package com.forcex.anim;
 import com.forcex.FX;
 import com.forcex.math.Matrix4f;
 import com.forcex.math.Vector3f;
+
 import java.util.HashMap;
 
 public class Animator {
     public AnimationControl control;
-    Animation animation;
-    HashMap<SkeletonNode, Matrix4f> animMatrices = new HashMap<SkeletonNode, Matrix4f>();
-    Matrix4f[] boneMatrices;
-    SkeletonNode skeleton;
-    byte numBone = 0;
+    private Animation animation;
+    private HashMap<SkeletonNode, Matrix4f> animMatrices = new HashMap<SkeletonNode, Matrix4f>();
+    private Matrix4f[] boneMatrices;
+    private final SkeletonNode skeleton;
+    private byte numBone = 0;
 
     /**
      * Constructor for the Animator class.
@@ -68,7 +69,6 @@ public class Animator {
         } else {
             if (control.time > animation.getDuration()) {
                 control.play = false;
-                return;
             }
         }
     }
@@ -88,7 +88,6 @@ public class Animator {
                 control.time += FX.gpu.getDeltaTime() * control.speed;
                 updateBonesMatrices();
             }
-            return;
         }
     }
 

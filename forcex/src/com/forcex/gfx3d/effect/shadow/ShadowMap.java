@@ -1,7 +1,6 @@
 package com.forcex.gfx3d.effect.shadow;
 import com.forcex.math.*;
 import com.forcex.core.*;
-import java.util.*;
 import com.forcex.gfx3d.*;
 import com.forcex.*;
 import com.forcex.core.gpu.*;
@@ -10,14 +9,15 @@ import com.forcex.gfx3d.effect.*;
 public class ShadowMap {
     private int fbo = -1;
     private GL gl = FX.gl;
-    private Light light;
-    private ShadowShader shader;
+    private final Light light;
+    private final ShadowShader shader;
     private int texture = -1;
-	private boolean skin, filtering;
+	private final boolean skin, filtering;
 	public static int size = 128;
+
 	Matrix4f temp;
 	
-    public ShadowMap(Light light,boolean useSkinning,boolean filterAlpha) {
+    public ShadowMap(Light light,boolean useSkinning, boolean filterAlpha) {
         this.light = light;
 		light.useInShadow();
 		shader = new ShadowShader(useSkinning,filterAlpha);
@@ -26,8 +26,8 @@ public class ShadowMap {
 		temp = new Matrix4f();
     }
 	
-	public void begin(){
-		if(fbo == -1){
+	public void begin() {
+		if(fbo == -1) {
 			create();
 		}
 		gl.glBindFramebuffer(GL.GL_FRAMEBUFFER, fbo);
@@ -38,34 +38,34 @@ public class ShadowMap {
 		light.updateLookAt();
 	}
 	
-	public void render(ModelObject obj){
+	public void render(ModelObject obj) {
 		if (obj.isShadowMapCullfaceEnabled()) {
 			gl.glEnable(GL.GL_CULL_FACE);
 		} else {
 			gl.glDisable(GL.GL_CULL_FACE);
 		}
-		shader.setMatrix4f(shader.u_MVPMatrix, light.getProjView().mult(temp,obj.getTransform()));
+		shader.setMatrix4f(shader.u_MVPMatrix, light.getProjView().mult(temp, obj.getTransform()));
 		Mesh mesh = obj.getMesh();
 		VertexBuffer vbo = mesh.getVertexBuffer();
 		vbo.bind();
 		vbo.EnableVertexAttrib(shader.attrib_position, 3, 0);
-		if(filtering){
-			vbo.EnableVertexAttrib(shader.attrib_texcoord,2,mesh.getVertexInfo().texcoord_ofs);
+		if(filtering) {
+			vbo.EnableVertexAttrib(shader.attrib_texcoord,2,mesh.getVertexInfo().tex_coord_offset);
 		}
-		if(skin){
-			if(obj.hasAnimator()){
-				vbo.EnableVertexAttrib(shader.attrib_bonew,4,mesh.getVertexInfo().bone_w_ofs);
-				vbo.EnableVertexAttrib(shader.attrib_bonei,4,mesh.getVertexInfo().bone_i_ofs);
+		if(skin) {
+			if(obj.hasAnimator()) {
+				vbo.EnableVertexAttrib(shader.attrib_bonew,4,mesh.getVertexInfo().bone_weights_offset);
+				vbo.EnableVertexAttrib(shader.attrib_bonei,4,mesh.getVertexInfo().bone_indices_offset);
 				obj.getAnimator().update();
 				shader.setMatrix4fArray(shader.u_BoneMatrices,obj.getAnimator().getBoneMatrices());
 				shader.setInt(shader.u_UseSkeleton,1);
-			}else{
+			} else {
 				shader.setInt(shader.u_UseSkeleton,0);
 			}
 		}
 		for (MeshPart p : mesh.getParts().list) {
 			if (p.material.color.a >= 100) {
-				if(filtering){
+				if(filtering) {
 					Texture.bind(GL.GL_TEXTURE0,p.material.diffuseTexture);
 				}
 				p.draw(mesh.getPrimitiveType(),false);
@@ -80,16 +80,8 @@ public class ShadowMap {
         gl.glDisable(GL.GL_CULL_FACE);
     }
 	
-	public void setTextureSize(int size){
-		this.size = size;
-	}
-	
-	public int getTextureSize(){
-		return size;
-	}
-	
     public void create() {
-		if(!FX.gpu.hasOGLExtension("GL_OES_depth_texture")){
+		if(!FX.gpu.hasOGLExtension("GL_OES_depth_texture")) {
 			FX.device.showInfo(
 				"ForceX: \n"+
 				"Shadow Map:\n"+
@@ -100,7 +92,7 @@ public class ShadowMap {
 		}
 		Texture.remove(texture);
 		texture = -1;
-		if(fbo != -1){
+		if(fbo != -1) {
 			FX.gl.glDeleteFrameBuffer(fbo);
 		}
 		fbo = -1;
@@ -120,7 +112,6 @@ public class ShadowMap {
 				"FrameBuffer:\n"+
 				"Estate: CRASHED\n"+
 				"Error can't create the framebuffer.",true);
-
 			FX.device.stopRender();
 		}
         gl.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0);

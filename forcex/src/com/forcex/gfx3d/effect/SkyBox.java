@@ -8,19 +8,17 @@ import com.forcex.gfx3d.*;
 import com.forcex.math.*;
 
 public class SkyBox{
-	ShaderProgram shader;
-	int ibo,vbo;
-	int stride = 24;
-	int color_ofs = 12,lenght;
-	int vertex_idx,color_idx,mvp_idx;
-	GL gl = FX.gl;
-	Matrix4f rotx,temp;
+	private final ShaderProgram shader;
+	private final int ibo;
+	private final int vbo;
+	private int stride = 24;
+	private int color_ofs = 12, length;
+	int vertex_idx, color_idx, mvp_idx;
+	private final GL gl = FX.gl;
+	private final Matrix4f rotation_x, temp;
 	
-	public SkyBox(float size){
-		float w = size;
-		float h = size;
-		float d = size;
-		rotx = Matrix4f.fromRotation(Quaternion.fromEulerAngles(-90,0,0));
+	public SkyBox(float side_size) {
+		rotation_x = Matrix4f.fromRotation(Quaternion.fromEulerAngles(-90,0,0));
 		temp = new Matrix4f();
 		shader = new ShaderProgram();
 		shader.createProgram(
@@ -43,35 +41,35 @@ public class SkyBox{
 		
 		float[] vertices ={
 			//front
-			-w,+h,+d,
-			+w,+h,+d,
-			+w,-h,+d,
-			-w,-h,+d,
+			-side_size,+side_size,+side_size,
+			+side_size,+side_size,+side_size,
+			+side_size,-side_size,+side_size,
+			-side_size,-side_size,+side_size,
 			//right
-			+w,+h,+d,
-			+w,+h,-d,
-			+w,-h,-d,
-			+w,-h,+d,
+			+side_size,+side_size,+side_size,
+			+side_size,+side_size,-side_size,
+			+side_size,-side_size,-side_size,
+			+side_size,-side_size,+side_size,
 			//back
-			+w,+h,-d,
-			-w,+h,-d,
-			-w,-h,-d,
-			+w,-h,-d,
+			+side_size,+side_size,-side_size,
+			-side_size,+side_size,-side_size,
+			-side_size,-side_size,-side_size,
+			+side_size,-side_size,-side_size,
 			//left
-			-w,+h,-d,
-			-w,+h,+d,
-			-w,-h,+d,
-			-w,-h,-d,
+			-side_size,+side_size,-side_size,
+			-side_size,+side_size,+side_size,
+			-side_size,-side_size,+side_size,
+			-side_size,-side_size,-side_size,
 			//top
-			-w,+h,-d,
-			+w,+h,-d,
-			+w,+h,+d,
-			-w,+h,+d,
+			-side_size,+side_size,-side_size,
+			+side_size,+side_size,-side_size,
+			+side_size,+side_size,+side_size,
+			-side_size,+side_size,+side_size,
 			//bottom
-			-w,-h,+d,
-			+w,-h,+d,
-			+w,-h,-d,
-			-w,-h,-d
+			-side_size,-side_size,+side_size,
+			+side_size,-side_size,+side_size,
+			+side_size,-side_size,-side_size,
+			-side_size,-side_size,-side_size
 		};
 		
 		short[] colors = {
@@ -116,11 +114,11 @@ public class SkyBox{
 			20,22,21,20,23,22 //bottom
 		};
 		
-		lenght = indices.length;
-		int vertexcount = (vertices.length / 3);
-		int datasize = (vertexcount * 24);
-		FloatBuffer fb = BufferUtils.createByteBuffer(datasize).asFloatBuffer();
-		for(int i = 0;i < vertexcount;i++){
+		length = indices.length;
+		int vertexCount = (vertices.length / 3);
+		int data_size = (vertexCount * 24);
+		FloatBuffer fb = BufferUtils.createByteBuffer(data_size).asFloatBuffer();
+		for(int i = 0;i < vertexCount;i++){
 			fb.put(vertices[i*3]);
 			fb.put(vertices[i*3 + 1]);
 			fb.put(vertices[i*3 + 2]);
@@ -130,27 +128,25 @@ public class SkyBox{
 		}
 		fb.position(0);
 		vbo = gl.glGenBuffer();
-		gl.glBindBuffer(GL.GL_ARRAY_BUFFER,vbo);
-		gl.glBufferData(GL.GL_ARRAY_BUFFER,datasize,fb, GL.GL_STATIC_DRAW);
+		gl.glBindBuffer(GL.GL_ARRAY_BUFFER, vbo);
+		gl.glBufferData(GL.GL_ARRAY_BUFFER, data_size,fb, GL.GL_STATIC_DRAW);
 		gl.glBindBuffer(GL.GL_ARRAY_BUFFER,0);
 		ibo = gl.glGenBuffer();
-		gl.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER,ibo);
+		gl.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, ibo);
 		gl.glBufferData(GL.GL_ELEMENT_ARRAY_BUFFER,indices.length*2,BufferUtils.createShortBuffer(indices), GL.GL_STATIC_DRAW);
 		gl.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER,0);
-		vertices = null;
-		colors = null;
-		indices = null;
 	}
-	public void render(Camera cam){
+
+	public void render(Camera cam) {
 		shader.start();
-		shader.setMatrix4f(mvp_idx,cam.getProjViewMatrix().mult(temp,rotx));
+		shader.setMatrix4f(mvp_idx,cam.getProjViewMatrix().mult(temp, rotation_x));
 		gl.glBindBuffer(GL.GL_ARRAY_BUFFER,vbo);
 		gl.glVertexAttribPointer(vertex_idx,3,GL.GL_FLOAT,false,stride,0);
 		gl.glEnableVertexAttribArray(vertex_idx);
 		gl.glVertexAttribPointer(color_idx,3,GL.GL_FLOAT,false,stride,color_ofs);
 		gl.glEnableVertexAttribArray(color_idx);
 		gl.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, ibo);
-        gl.glDrawElements(GL.GL_TRIANGLES, lenght);
+        gl.glDrawElements(GL.GL_TRIANGLES, length);
 		shader.stop();
 	}
 }

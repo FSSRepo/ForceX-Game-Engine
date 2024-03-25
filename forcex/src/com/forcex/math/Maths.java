@@ -1,12 +1,12 @@
 package com.forcex.math;
 
 public class Maths {
-	public static final float toRadians = 0.0174532924f;
-	public static final float toDegrees = 57.295779513f;
-	public static final float PI_2 		= 6.28318530f;
-	public static final float PI 		= 3.14159265f;
-	public static final float epsilon 	= 0.00001f;
-	
+    public static final float toRadians = 0.0174532924f;
+    public static final float toDegrees = 57.295779513f;
+    public static final float PI_2 = 6.28318530f;
+    public static final float PI = 3.14159265f;
+    public static final float epsilon = 0.00001f;
+
     public static float cos(float v) {
         return (float) Math.cos(v);
     }
@@ -56,20 +56,14 @@ public class Maths {
     }
 
     static public float clamp(float value, float min, float max) {
-        return (value < min) ? min : ((value > max) ? max : value);
+        return Math.max(min, Math.min(value, max));
     }
 
     public static float sqrt(float v) {
         return (float) Math.sqrt(v);
     }
-	
-	public static float sqr(float v) {
+
+    public static float sqr(float v) {
         return v * v;
     }
-	
-	public static Vector2f eqCuadratic(float a,float b,float c){
-		float det = sqr(b) - 4*a*c;
-		float root = det > 0 ? sqrt(det) : 0;
-		return new Vector2f(det >= 0 ? ((-b + root) / 2 * a):0,det >= 0 ? ((-b - root) / 2*a):0);
-	}
 }

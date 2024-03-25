@@ -68,7 +68,7 @@ To integrate ForceX into your applications, you must have built the respective f
 
 ### Windows and Linux
 
-1. Copy the files from `dist/(windows|linux)/libs` to your libs `.jar` of your app.
+1. Copy the files from `dist/(windows|linux)/libs` to your libraries `.jar` directory of your app.
 
 2. After you build your application jar, you have to copy the native libraries and `data` directory from `dist/(windows|linux)` to your .jar directory, like this:
 
@@ -88,11 +88,11 @@ outputs
     lwjgl.so
 ```
 
-2. Import the libraries in your `build.gradle` in your dependencies block:
+3. Import the libraries in your `build.gradle` in your dependencies block:
 
 ```java
 dependencies {
-    implementation files('libs/forcex-windows-backend.jar', 'libs/forcex.jar', 'libs/jinput.jar', 'libs/lwjgl_util_applet.jar', 'libs/lwjgl_util.jar', , 'libs/lwjgl.jar', 'libs/lzma.jar')
+    implementation files('libs/forcex-windows-backend.jar', 'libs/forcex.jar', 'libs/jinput.jar', 'libs/lwjgl_util_applet.jar', 'libs/lwjgl_util.jar', 'libs/lwjgl.jar', 'libs/lzma.jar')
 }
 ```
 

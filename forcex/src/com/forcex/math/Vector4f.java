@@ -23,14 +23,14 @@ public class Vector4f {
         z = v.z;
         w = iw;
     }
-	
-	public Vector4f(float[] array,int offset,float w){
-		x = array[offset];
-		y = array[offset+1];
-		z = array[offset+2];
-		this.w = w;
-	}
-	
+
+    public Vector4f(float[] array, int offset, float w) {
+        x = array[offset];
+        y = array[offset + 1];
+        z = array[offset + 2];
+        this.w = w;
+    }
+
     public Vector4f(Vector4f v) {
         x = v.x;
         y = v.y;
@@ -59,27 +59,27 @@ public class Vector4f {
         y = sy;
         z = sz;
         w = sw;
-		return this;
+        return this;
     }
-	
+
     public Vector4f set(Vector3f v3, float sw) {
         x = v3.x;
         y = v3.y;
         z = v3.z;
         w = sw;
-		return this;
+        return this;
     }
-	
-	public Vector4f set(Vector4f v) {
+
+    public Vector4f set(Vector4f v) {
         x = v.x;
         y = v.y;
         z = v.z;
         w = v.w;
-		return this;
+        return this;
     }
-	
+
     public String toString() {
-        return "[" + String.format("%.4f", x) + " | " + String.format("%.4f", y) + " | " + String.format("%.4f", z) + " | " + String.format("%.4f", w)+"]";
+        return "[" + String.format("%.4f", x) + " | " + String.format("%.4f", y) + " | " + String.format("%.4f", z) + " | " + String.format("%.4f", w) + "]";
     }
 
     public float length() {
@@ -88,14 +88,14 @@ public class Vector4f {
 
     public float normalize() {
         float invLen = 1f / length();
-		multLocal(invLen);
+        multLocal(invLen);
         return invLen;
     }
 
     public Vector4f mult(float f) {
         return new Vector4f(x * f, y * f, z * f, w * f);
     }
-	
+
     public Vector4f multLocal(float f) {
         x *= f;
         y *= f;
@@ -110,11 +110,11 @@ public class Vector4f {
         z += v.z;
         return this;
     }
-	
-	public float distanceTo(Vector3f point){
-		return point.dot(x,y,z) + w;
-	}
-	
+
+    public float distanceTo(Vector3f point) {
+        return point.dot(x, y, z) + w;
+    }
+
     public Vector3f cross(Vector3f v) {
         return new Vector3f(
                 y * v.z - z * v.y,

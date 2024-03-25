@@ -4,34 +4,34 @@ import com.forcex.*;
 
 public class ReflectionBuffer
 {
-	private int size = 128;
-	private int texture;
-	private int fbo,rbo;
-	private GL gl = FX.gl;
+	public static int size = 128;
+	private final int texture;
+	private int fbo, rbo;
+	private final GL gl = FX.gl;
 	
-	public ReflectionBuffer(){
+	public ReflectionBuffer() {
 		texture = createTexture();
 		createFrameBuffer();
 	}
 	
-	public void begin(){
+	public void begin() {
 		gl.glBindFramebuffer(GL.GL_FRAMEBUFFER, fbo);
         gl.glViewport(size, size);
 		gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
 	}
 	
-	public void end(){
+	public void end() {
 		gl.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0);
         gl.glViewport(FX.gpu.getWidth(), FX.gpu.getHeight());
 	}
 	
-	public void delete(){
+	public void delete() {
 		gl.glDeleteRenderBuffer(rbo);
         gl.glDeleteFrameBuffer(fbo);
 		gl.glDeleteTexture(texture);
 	}
 	
-	private void createFrameBuffer(){
+	private void createFrameBuffer() {
 		rbo = gl.glGenRenderbuffer();
         gl.glBindRenderbuffer(GL.GL_RENDERBUFFER, rbo);
         gl.glRenderbufferStorage(GL.GL_RENDERBUFFER, GL.GL_DEPTH_COMPONENT16, size, size);
@@ -45,13 +45,12 @@ public class ReflectionBuffer
 				"FrameBuffer:\n"+
 				"Estate: CRASHED\n"+
 				"Error can't create the water framebuffer.",true);
-
 			FX.device.stopRender();
 		}
         gl.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0);
 	}
 	
-	private int createTexture(){
+	private int createTexture() {
 		int tex = gl.glGenTexture();
         gl.glBindTexture(GL.GL_TEXTURE_2D, tex);
         gl.glEmptyTexture(GL.GL_TEXTURE_2D, size, size, GL.GL_RGB, GL.GL_RGB, GL.GL_UNSIGNED_BYTE);

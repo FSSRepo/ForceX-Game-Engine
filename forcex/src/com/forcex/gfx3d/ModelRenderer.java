@@ -2,7 +2,7 @@ package com.forcex.gfx3d;
 import com.forcex.gfx3d.shader.*;
 import com.forcex.core.*;
 import com.forcex.*;
-import com.forcex.utils.*;
+import com.forcex.gfx3d.shapes.DrawDynamicTriangle;
 import com.forcex.math.*;
 import com.forcex.core.gpu.*;
 import com.forcex.gfx3d.effect.shadow.*;

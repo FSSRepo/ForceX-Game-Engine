@@ -6,17 +6,17 @@ package com.forcex.anim;
 public class AnimationControl {
     boolean loop = false;   // Indicates whether the animation should loop.
     boolean play = true;    // Indicates whether the animation is currently playing.
-    
+
     // Command constants for controlling the animation.
     public static final byte CMD_RESET = 0;    // Reset the animation to its initial state.
     public static final byte CMD_PLAY = 1;     // Start or resume playback.
     public static final byte CMD_PAUSE = 2;    // Pause playback.
     public static final byte CMD_LOOP = 3;     // Enable looping mode.
     public static final byte CMD_NO_LOOP = 4;  // Disable looping mode.
-    
+
     public float time = 0.0f;   // Current time of the animation.
     public float speed = 1.0f;  // Speed at which the animation is playing.
-    
+
     /**
      * Executes a command to control the animation playback.
      *
@@ -44,7 +44,7 @@ public class AnimationControl {
                 break;
         }
     }
-    
+
     /**
      * Check if the animation is currently running (playing).
      *

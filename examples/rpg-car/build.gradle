@@ -1,0 +1,53 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:7.1.3'
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+project(":android") {
+    apply plugin: "android"
+
+    dependencies {
+        implementation project(":core")
+        implementation files('libs/android-backend-release.aar')
+        // to avoid Class file not found
+        compileOnly files( '../glibs/forcex.jar')
+    }
+}
+
+project(":core") {
+    apply plugin: "java-library"
+
+    dependencies {
+        implementation files('libs/libopenpl.jar', '../glibs/forcex.jar')
+    }
+}
+
+project(":desktop") {
+    apply plugin: "java-library"
+
+    dependencies {
+        implementation project(":core")
+        implementation files('libs/forcex-windows-backend.jar', 'libs/jinput.jar', 'libs/lwjgl_util_applet.jar', 'libs/lwjgl_util.jar', 'libs/lwjgl.jar', 'libs/lzma.jar')
+        // to avoid Class file not found
+        compileOnly files( '../glibs/forcex.jar')
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}

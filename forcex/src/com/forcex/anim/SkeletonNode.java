@@ -1,6 +1,8 @@
 package com.forcex.anim;
-import com.forcex.math.*;
-import java.util.*;
+
+import com.forcex.math.Matrix4f;
+
+import java.util.ArrayList;
 
 /**
  * Represents a node in a skeleton hierarchy.
@@ -24,6 +26,7 @@ public class SkeletonNode {
 
     /**
      * Adds a child node to the current node.
+     *
      * @param frame The child node to be added.
      */
     public void addChild(SkeletonNode frame) {
@@ -33,6 +36,7 @@ public class SkeletonNode {
 
     /**
      * Retrieves the local model matrix of the node.
+     *
      * @return The local model matrix.
      */
     public Matrix4f getLocalModelMatrix() {
@@ -47,6 +51,7 @@ public class SkeletonNode {
 
     /**
      * Finds a node in the hierarchy based on the bone number.
+     *
      * @param num The bone number to search for.
      * @return The found node or null if not found.
      */
@@ -65,6 +70,7 @@ public class SkeletonNode {
 
     /**
      * Finds a node in the hierarchy based on the bone ID.
+     *
      * @param id The bone ID to search for.
      * @return The found node or null if not found.
      */

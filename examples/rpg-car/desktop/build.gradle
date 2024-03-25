@@ -1,0 +1,21 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '7.0.0'
+}
+
+sourceCompatibility = 1.8
+java.targetCompatibility = JavaVersion.VERSION_1_8
+sourceSets.main.java.srcDirs = ["src/"]
+
+shadowJar {
+    archiveName = 'prototype.jar'
+
+    manifest {
+        attributes 'Main-Class': 'com.steward.prototype.DesktopLauncher'
+    }
+}
+
+application {
+    mainClass = 'com.steward.prototype.DesktopLauncher'
+}

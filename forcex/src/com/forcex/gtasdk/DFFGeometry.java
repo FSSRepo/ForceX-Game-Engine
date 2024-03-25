@@ -105,14 +105,14 @@ public class DFFGeometry
 			flags |= GEOMETRY_FLAG_NORMALS;
 			normals = data.normals;
 		}
-		if(data.texcoords != null){
+		if(data.uvs != null){
 			flags |= GEOMETRY_FLAG_TEXCOORDS;
 			uvsets = 1;
-			if(data.texcoords.length > vertexCount * 2){
+			if(data.uvs.length > vertexCount * 2){
 				flags |= GEOMETRY_FLAG_MULTIPLEUVSETS;
 				uvsets = 2;
 			}
-			texcoords = data.texcoords;
+			texcoords = data.uvs;
 		}
 		if(data.colors != null){
 			flags |= GEOMETRY_FLAG_COLORS;

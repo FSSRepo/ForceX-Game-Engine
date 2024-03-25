@@ -50,7 +50,7 @@ if "%android%"=="TRUE" (
 
     echo Android Platform Target: %platform%
 
-    set "abis=armeabi-v7a arm64-v8a x86"
+    set "abis=armeabi-v7a arm64-v8a x86 x86_64"
 
     if "%dist%" == "FALSE" (
         for %%a in (%abis%) do (

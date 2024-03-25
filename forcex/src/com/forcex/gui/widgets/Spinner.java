@@ -77,11 +77,11 @@ public class Spinner extends View implements ListView.OnItemClickListener {
 			if(!choose_option){
 				listview.setRelativePosition(local.x,local.y - extent.y - listview.getExtentHeight());
 				choose_option = context.addSlotPriority(listview);
-				context.addGhostView(listview);
+				context.addUntouchableView(listview);
 			}else if(GameUtils.testRect(x,y,local,extent.x,extent.y)){
 				choose_option = false;
 				context.removeSlotPriority(listview.getId());
-				context.removeGhostView(listview);
+				context.removeUntouchableView(listview);
 			}
 		}
 	}
@@ -93,14 +93,14 @@ public class Spinner extends View implements ListView.OnItemClickListener {
 		}
 		choose_option = false;
 		context.removeSlotPriority(listview.getId());
-		context.removeGhostView(listview);
+		context.removeUntouchableView(listview);
 		return false;
 	}
 
 	@Override
 	public void onItemClick(ListView view, Object item, short position, boolean longclick) {
 		context.removeSlotPriority(view.getId());
-		context.removeGhostView(view);
+		context.removeUntouchableView(view);
 		choose_option = false;
 		textview.setText(((SpinnerItem)item).text);
 		position_pointer = position;

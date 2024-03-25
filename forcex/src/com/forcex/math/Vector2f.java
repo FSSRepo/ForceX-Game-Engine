@@ -13,12 +13,12 @@ public class Vector2f {
         this.x = x;
         this.y = y;
     }
-	
-	public Vector2f(float[] array,int offset) {
+
+    public Vector2f(float[] array, int offset) {
         x = array[offset];
         y = array[offset + 1];
     }
-	
+
     public Vector2f() {
         this(0f);
     }
@@ -26,54 +26,57 @@ public class Vector2f {
     public Vector2f set(float x, float y) {
         this.x = x;
         this.y = y;
-		return this;
+        return this;
     }
-	public Vector2f set(float[] array,int offset){
-		x = array[offset];
-		y = array[offset+1];
-		return this;
-	}
-	public Vector2f set(Vector2f v) {
+
+    public Vector2f set(float[] array, int offset) {
+        x = array[offset];
+        y = array[offset + 1];
+        return this;
+    }
+
+    public Vector2f set(Vector2f v) {
         this.x = v.x;
         this.y = v.y;
-		return this;
+        return this;
     }
-	
+
     public Vector2f multLocal(float scl) {
         x *= scl;
         y *= scl;
         return this;
     }
-	
-	public Vector2f multLocal(float sclx,float scly) {
+
+    public Vector2f multLocal(float sclx, float scly) {
         x *= sclx;
         y *= scly;
         return this;
     }
-	
-	public Vector2f mult(float scl) {
-        return new Vector2f(x*scl,y*scl);
+
+    public Vector2f mult(float scl) {
+        return new Vector2f(x * scl, y * scl);
     }
-	
-	public Vector2f mult(float sx,float sy) {
-        return new Vector2f(x*sx,y*sy);
+
+    public Vector2f mult(float sx, float sy) {
+        return new Vector2f(x * sx, y * sy);
     }
-	
+
     public Vector2f addLocal(Vector2f v) {
         x += v.x;
         y += v.y;
         return this;
     }
-	
-	public Vector2f subLocal(Vector2f v) {
+
+    public Vector2f subLocal(Vector2f v) {
         x -= v.x;
         y -= v.y;
         return this;
     }
-	
-	public Vector2f add(float x,float y) {
-        return new Vector2f(this.x + x,this.y + y);
+
+    public Vector2f add(float x, float y) {
+        return new Vector2f(this.x + x, this.y + y);
     }
+
     public Vector2f add(Vector2f v) {
         return new Vector2f(x + v.x, y + v.y);
     }
@@ -81,9 +84,11 @@ public class Vector2f {
     public Vector2f sub(Vector2f v) {
         return new Vector2f(x - v.x, y - v.y);
     }
-	public Vector2f sub(float x,float y) {
-        return new Vector2f(this.x - x,this.y - y);
+
+    public Vector2f sub(float x, float y) {
+        return new Vector2f(this.x - x, this.y - y);
     }
+
     public Vector2f negative() {
         return new Vector2f(-x, -y);
     }
@@ -93,7 +98,7 @@ public class Vector2f {
     }
 
     public String toString() {
-        return "[" + String.format("%.3f", x) + " | " + String.format("%.3f", y) +"]";
+        return "[" + String.format("%.3f | %.3f", x, y) + "]";
     }
 
     public float length() {
@@ -126,5 +131,5 @@ public class Vector2f {
                 y + (porcent * (end.y - y))
         );
     }
-    
+
 }

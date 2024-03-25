@@ -2,7 +2,6 @@ package com.forcex.gfx3d.effect.water;
 import com.forcex.gfx3d.*;
 import com.forcex.*;
 import com.forcex.core.*;
-import com.forcex.core.gpu.*;
 import com.forcex.utils.*;
 import com.forcex.gfx3d.effect.*;
 import com.forcex.math.*;
@@ -12,9 +11,9 @@ public class WaterRenderer
 {
 	WaterShader shader;
 	float deltaMove = 0,moveSpeed = 0.1f;
-	int vbo_rect,vbo_waves,ibo_waves,diffuseTex,dudvTex,normTex;
+	int vbo_rect, vbo_waves, ibo_waves, diffuseTex, dudvTex, normTex;
 	GL gl = FX.gl;
-	boolean useLighting,useReflex;
+	boolean useLighting, useReflex;
 	ArrayList<WaterTile> tiles = new ArrayList<>();
 	public ReflectionBuffer fbo;
 	Camera reflectcam;
@@ -32,10 +31,10 @@ public class WaterRenderer
 		tiles.add(tile);
 	}
 	
-	public WaterRenderer(String heightmap,boolean useLight,boolean useReflections){
+	public WaterRenderer(String heightmap, boolean useLight, boolean useReflections) {
 		useLighting = useLight;
 		useReflex = useReflections;
-		if(heightmap.length() > 0){
+		if(heightmap.length() > 0) {
 			hmap = new HeightMap(heightmap,2,1,false,false);
 			idxcount = hmap.indices.length;
 		}
@@ -83,10 +82,10 @@ public class WaterRenderer
 		if(fbo != null)fbo.end();
 	}
 	
-	public void render(Camera cam,Light light){
+	public void render(Camera cam,Light light) {
 		if(first){
 			shader = new WaterShader(useLighting,useReflex);
-			float[] vertexs = {
+			float[] quad_vertices = {
 				-1,0,1,
 				-1,0,-1,
 				1,0,1,
@@ -94,9 +93,9 @@ public class WaterRenderer
 			};
 			vbo_rect = gl.glGenBuffer();
 			gl.glBindBuffer(GL.GL_ARRAY_BUFFER,vbo_rect);
-			gl.glBufferData(GL.GL_ARRAY_BUFFER,vertexs.length * 4,BufferUtils.createFloatBuffer(vertexs),GL.GL_STATIC_DRAW);
+			gl.glBufferData(GL.GL_ARRAY_BUFFER,quad_vertices.length * 4,BufferUtils.createFloatBuffer(quad_vertices),GL.GL_STATIC_DRAW);
 			gl.glBindBuffer(GL.GL_ARRAY_BUFFER,0);
-			if(hmap != null){
+			if(hmap != null) {
 				vbo_waves = gl.glGenBuffer();
 				gl.glBindBuffer(GL.GL_ARRAY_BUFFER,vbo_waves);
 				gl.glBufferData(GL.GL_ARRAY_BUFFER,hmap.vertices.length * 4,BufferUtils.createFloatBuffer(hmap.vertices),GL.GL_STATIC_DRAW);
@@ -130,26 +129,26 @@ public class WaterRenderer
 				gl.glBindTexture(GL.GL_TEXTURE_2D,fbo.getReflectionTexture());
 			}
 			for(WaterTile tile : tiles){
-				if(tile.isPiscine){
+				if(tile.isWaterPool){
 					gl.glBindBuffer(GL.GL_ARRAY_BUFFER,vbo_rect);
 				}else{
 					gl.glBindBuffer(GL.GL_ARRAY_BUFFER,vbo_waves);
 				}
 				gl.glVertexAttribPointer(shader.attrib_position,3,GL.GL_FLOAT,false,0,0);
 				gl.glEnableVertexAttribArray(shader.attrib_position);
-				shader.setIsPicine(tile.isPiscine);
+				shader.setIsPicine(tile.isWaterPool);
 				renderWaterTileLight(tile);
 			}
 		}else{
 			for(WaterTile tile : tiles){
-				if(tile.isPiscine){
+				if(tile.isWaterPool){
 					gl.glBindBuffer(GL.GL_ARRAY_BUFFER,vbo_rect);
 				}else{
 					gl.glBindBuffer(GL.GL_ARRAY_BUFFER,vbo_waves);
 				}
 				gl.glVertexAttribPointer(shader.attrib_position,3,GL.GL_FLOAT,false,0,0);
 				gl.glEnableVertexAttribArray(shader.attrib_position);
-				shader.setIsPicine(tile.isPiscine);
+				shader.setIsPicine(tile.isWaterPool);
 				renderWaterTile(tile,cam);
 			}
 		}
@@ -160,25 +159,25 @@ public class WaterRenderer
 		deltaMove += FX.gpu.getDeltaTime();
 	}
 	
-	private void renderWaterTileLight(WaterTile tile){
+	private void renderWaterTileLight(WaterTile tile) {
 		model_matrix.setScale(tile.size,1,tile.size).setLocation(tile.position);
 		shader.setModelMatrix(model_matrix);
-		if(tile.isPiscine){
+		if(tile.isWaterPool) {
 			gl.glDrawArrays(GL.GL_TRIANGLE_STRIP,0,4);
-		}else{
-			gl.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER,ibo_waves);
+		} else {
+			gl.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, ibo_waves);
 			gl.glDrawElements(GL.GL_TRIANGLES,idxcount);
 		}
 	}
 	
-	private void renderWaterTile(WaterTile tile,Camera cam){
+	private void renderWaterTile(WaterTile tile, Camera cam) {
 			model_matrix.setScale(tile.size,1,tile.size).setLocation(tile.position);
 			shader.setMVPMatrix(cam.getProjViewMatrix().mult(temp_matrix, model_matrix));
-			if(tile.isPiscine){
+			if(tile.isWaterPool) {
 				gl.glDrawArrays(GL.GL_TRIANGLE_STRIP,0,4);
 			}else{
-				gl.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER,ibo_waves);
-				gl.glDrawElements(GL.GL_TRIANGLES,idxcount);
+				gl.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, ibo_waves);
+				gl.glDrawElements(GL.GL_TRIANGLES, idxcount);
 			}
 	}
 } 

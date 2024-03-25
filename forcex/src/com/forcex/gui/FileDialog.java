@@ -61,17 +61,17 @@ public class FileDialog {
 				public void OnClick(View view) {
 					if(!modeFolder && selected != -1 && adapter.getItem(selected).file.getName().endsWith(extension)){
 						 result.open(id, adapter.getItem(selected).file.getAbsolutePath());
-						 dialog.dimiss();
+						 dialog.dismiss();
 					}else if(modeFolder){
 						result.open(id,current.getAbsolutePath());
-						dialog.dimiss();
+						dialog.dismiss();
 					}
 				}
 			});
 		open.setAlignment(Layout.RIGHT);
 		Button cancel = new Button(lang.get("cancel"),ctx.default_font,0.1f,0.055f);
-		open.setUseEdge(new Color(10,180,220));
-		cancel.setUseEdge(new Color(10,180,220));
+		open.setDrawBorders(new Color(10,180,220));
+		cancel.setDrawBorders(new Color(10,180,220));
 		open.setMarginTop(0.02f);
 		open.setTextSize(0.045f);
 		cancel.setTextSize(0.045f);
@@ -79,7 +79,7 @@ public class FileDialog {
 				@Override
 				public void OnClick(View view) {
 					if(result != null && result.tryCancel(id)){
-						dialog.dimiss();
+						dialog.dismiss();
 					}
 				}
 			});
@@ -89,9 +89,9 @@ public class FileDialog {
 		lay.add(cancel);
 		browse(new File(path),(short)-1);
 		dialog = new Dialog(lay);
-		dialog.setOnDimissListener(new Dialog.OnDimissListener(){
+		dialog.setOnDismissListener(new Dialog.OnDimissListener(){
 				@Override
-				public boolean dimiss() {
+				public boolean dismiss() {
 					if(result != null && result.tryCancel(id)){
 						for(ExtIcon e : exticon){
 							Texture.remove(e.icon);

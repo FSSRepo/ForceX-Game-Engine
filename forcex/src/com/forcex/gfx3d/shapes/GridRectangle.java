@@ -1,39 +1,40 @@
 package com.forcex.gfx3d.shapes;
-import com.forcex.gfx3d.*;
-import com.forcex.core.*;
 
-public class GridRectangle extends Mesh
-{
-	public GridRectangle(float lenght,int GRID_SIZE){
-		super(true);
-		float[] vertices = new float[GRID_SIZE * GRID_SIZE * 3];
-		short[] indices = new short[(GRID_SIZE - 1) * GRID_SIZE * 4];
-		int j,i,vert = 0,indx = 0;
-		for(i = 0;i < GRID_SIZE;i++){
-			float x = 0,y = 0;
-			for(j = 0;j < GRID_SIZE - 1;j++){
-				x = (float)(i - (GRID_SIZE >> 1)) * lenght;
-				y = (float)(j - (GRID_SIZE >> 1)) * lenght;
-				vertices[vert*3] = x;
-				vertices[vert*3+1] = 0;
-				vertices[vert*3+2] = y;
-				vert++;
-				indices[indx++] = (short)(GRID_SIZE*i+j);
-				indices[indx++] = (short)(GRID_SIZE*i+j+1);
-				indices[indx++] = (short)(i+GRID_SIZE*j);
-				indices[indx++] = (short)(i+GRID_SIZE*(j+1));
-			}
-			j = GRID_SIZE - 1;
-			x = (float)(i - (GRID_SIZE >> 1)) * lenght;
-			y = (float)(j - (GRID_SIZE >> 1)) * lenght;
-			vertices[vert*3] = x;
-			vertices[vert*3+1] = 0;
-			vertices[vert*3+2] = y;
-			vert++;
-		}
-		setVertices(vertices);
-		addPart(new MeshPart(indices));
-		lineSize = 0.1f;
-		setPrimitiveType(GL.GL_LINES);
-	}
+import com.forcex.core.GL;
+import com.forcex.gfx3d.Mesh;
+import com.forcex.gfx3d.MeshPart;
+
+public class GridRectangle extends Mesh {
+    public GridRectangle(float length, int grid_size) {
+        super(true);
+        float[] vertices = new float[grid_size * grid_size * 3];
+        short[] indices = new short[(grid_size - 1) * grid_size * 4];
+        int j, i, vertex = 0, index = 0;
+        for (i = 0; i < grid_size; i++) {
+            float x = 0, y = 0;
+            for (j = 0; j < grid_size - 1; j++) {
+                x = (float) (i - (grid_size >> 1)) * length;
+                y = (float) (j - (grid_size >> 1)) * length;
+                vertices[vertex * 3] = x;
+                vertices[vertex * 3 + 1] = 0;
+                vertices[vertex * 3 + 2] = y;
+                vertex++;
+                indices[index++] = (short) (grid_size * i + j);
+                indices[index++] = (short) (grid_size * i + j + 1);
+                indices[index++] = (short) (i + grid_size * j);
+                indices[index++] = (short) (i + grid_size * (j + 1));
+            }
+            j = grid_size - 1;
+            x = (float) (i - (grid_size >> 1)) * length;
+            y = (float) (j - (grid_size >> 1)) * length;
+            vertices[vertex * 3] = x;
+            vertices[vertex * 3 + 1] = 0;
+            vertices[vertex * 3 + 2] = y;
+            vertex++;
+        }
+        setVertices(vertices);
+        addPart(new MeshPart(indices));
+        lineSize = 0.1f;
+        setPrimitiveType(GL.GL_LINES);
+    }
 }

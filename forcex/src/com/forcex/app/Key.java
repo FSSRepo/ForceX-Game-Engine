@@ -57,62 +57,64 @@ public class Key
 	public static final byte KEY_CAPITAL = 47;
 	public static final byte KEY_DOT = 48;
 	public static final byte KEY_MINUS = 49;
-	public static final byte KEY_SHIFT = 50;
+
+	public static final byte KEY_R_SHIFT = 50;
+	public static final byte KEY_L_SHIFT = 51;
 	
-	public static char toKeyChar(byte key,boolean mayus){
+	public static char toKeyChar(byte key,boolean capital_letter){
 		switch(key){
 			case A_KEY:
-				return mayus ? 'A' : 'a';
+				return capital_letter ? 'A' : 'a';
 			case B_KEY:
-				return mayus ? 'B' : 'b';
+				return capital_letter ? 'B' : 'b';
 			case C_KEY:
-				return mayus ? 'C' : 'c';
+				return capital_letter ? 'C' : 'c';
 			case D_KEY:
-				return mayus ? 'D' : 'd';
+				return capital_letter ? 'D' : 'd';
 			case E_KEY:
-				return mayus ? 'E' : 'e';
+				return capital_letter ? 'E' : 'e';
 			case F_KEY:
-				return mayus ? 'F' : 'f';
+				return capital_letter ? 'F' : 'f';
 			case G_KEY:
-				return mayus ? 'G' : 'g';
+				return capital_letter ? 'G' : 'g';
 			case H_KEY:
-				return mayus ? 'H' : 'h';
+				return capital_letter ? 'H' : 'h';
 			case I_KEY:
-				return mayus ? 'I' : 'i';
+				return capital_letter ? 'I' : 'i';
 			case J_KEY:
-				return mayus ? 'J' : 'j';
+				return capital_letter ? 'J' : 'j';
 			case K_KEY:
-				return mayus ? 'K' : 'k';
+				return capital_letter ? 'K' : 'k';
 			case L_KEY:
-				return mayus ? 'L' : 'l';
+				return capital_letter ? 'L' : 'l';
 			case M_KEY:
-				return mayus ? 'M' : 'm';
+				return capital_letter ? 'M' : 'm';
 			case N_KEY:
-				return mayus ? 'N' : 'n';
+				return capital_letter ? 'N' : 'n';
 			case O_KEY:
-				return mayus ? 'O' : 'o';
+				return capital_letter ? 'O' : 'o';
 			case P_KEY:
-				return mayus ? 'P' : 'p';
+				return capital_letter ? 'P' : 'p';
 			case Q_KEY:
-				return mayus ? 'Q' : 'q';
+				return capital_letter ? 'Q' : 'q';
 			case R_KEY:
-				return mayus ? 'R' : 'r';
+				return capital_letter ? 'R' : 'r';
 			case S_KEY:
-				return mayus ? 'S' : 's';
+				return capital_letter ? 'S' : 's';
 			case T_KEY:
-				return mayus ? 'T' : 't';
+				return capital_letter ? 'T' : 't';
 			case V_KEY:
-				return mayus ? 'V' : 'v';
+				return capital_letter ? 'V' : 'v';
 			case U_KEY:
-				return mayus ? 'U' : 'u';
+				return capital_letter ? 'U' : 'u';
 			case W_KEY:
-				return mayus ? 'W' : 'w';
+				return capital_letter ? 'W' : 'w';
 			case X_KEY:
-				return mayus ? 'X' : 'x';
+				return capital_letter ? 'X' : 'x';
 			case Y_KEY:
-				return mayus ? 'Y' : 'y';
+				return capital_letter ? 'Y' : 'y';
 			case Z_KEY:
-				return mayus ? 'Z' : 'z';
+				return capital_letter ? 'Z' : 'z';
 			case KEY_0:
 				return '0';
 			case KEY_1:

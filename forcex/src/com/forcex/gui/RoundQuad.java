@@ -7,16 +7,16 @@ import com.forcex.core.*;
 public class RoundQuad{
 	float[] vertex_data;
 	short[] index_data;
-	short offset = 0,offset2 = 0;
-	int vbo,ibo,count;
-	float porcent = 0;
+	short offset = 0, offset2 = 0;
+	int vbo, ibo, count;
+	float percent = 0;
 	
-	public RoundQuad(float pcnt){
-		porcent = pcnt;
+	public RoundQuad(float percent) {
+		this.percent = percent;
 	}
 
 	public RoundQuad bind(Drawer drawer,int samples,float aspect_ratio){
-		float radius = porcent * 0.01f;
+		float radius = percent * 0.01f;
 		vertex_data = new float[(12 + (samples - 1) * 4) * 7];
 		index_data = new short[(10 + samples * 4) * 3];
 		// medium quad

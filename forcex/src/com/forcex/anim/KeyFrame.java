@@ -1,6 +1,8 @@
 package com.forcex.anim;
-import com.forcex.math.*;
-import com.forcex.utils.*;
+
+import com.forcex.math.Matrix4f;
+import com.forcex.math.Quaternion;
+import com.forcex.math.Vector3f;
 
 /**
  * Represents a keyframe for animation.

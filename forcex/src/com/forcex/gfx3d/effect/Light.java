@@ -16,7 +16,7 @@ public class Light
 		ambient = new Color(45,45,45);
 	}
 	
-	public void useInShadow(){
+	public void useInShadow() {
 		projectionMatrix = Matrix4f.orthogonal(-20.0f, 20.0f, -20.0f, 20.0f, 0.1f, 300.0f);
 		lookAt = new Matrix4f();
 		projView = new Matrix4f();
@@ -57,8 +57,8 @@ public class Light
 		return ambient;
 	}
 	
-	public void setFocalLength(float len){
-		projectionMatrix.setOrthogonal(-len,len,-len,len,0.1f,400f);
+	public void setFocalLength(float len) {
+		projectionMatrix.setOrthogonal(-len, len, -len, len,0.1f,400f);
 	}
 	
 	public void updateLookAt() {
@@ -75,7 +75,7 @@ public class Light
 		Vector3f right = direction.cross(up).normalize();
 		right.cross(direction,up).normalize();
         lookAt.setlookAt(position, direction, up);
-		projectionMatrix.mult(projView,lookAt);
+		projectionMatrix.mult(projView, lookAt);
     }
 	
 	public Matrix4f getProjView(){

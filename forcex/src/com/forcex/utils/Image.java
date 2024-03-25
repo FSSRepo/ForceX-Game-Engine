@@ -30,10 +30,10 @@ public class Image
 	}
 	
 	public void save(String path){
-		CoreJni.pngencode(data,path,width,height);
+		CoreJni.pngencode(data, path, width, height);
 	}
 	
-	public byte[] getRGBAImage(){
+	public byte[] getRGBAImage() {
 		return data;
 	}
 	
@@ -46,13 +46,13 @@ public class Image
 	public void setRGBA(int x,int y,int r,int g,int b,int a){
 		int pixel = (x + (width * y)) * 4;
 		data[pixel] = (byte)r;
-		data[pixel+1] = (byte)g;
-		data[pixel+2] = (byte)b;
-		data[pixel+3] = (byte)a;
+		data[pixel + 1] = (byte)g;
+		data[pixel + 2] = (byte)b;
+		data[pixel + 3] = (byte)a;
 	}
 	
 	public ByteBuffer getBuffer(){
-		ByteBuffer bb = ByteBuffer.allocateDirect(width*height*4).order(ByteOrder.nativeOrder());
+		ByteBuffer bb = ByteBuffer.allocateDirect(width * height * 4).order(ByteOrder.nativeOrder());
 		bb.put(data);
 		bb.flip();
 		return bb;

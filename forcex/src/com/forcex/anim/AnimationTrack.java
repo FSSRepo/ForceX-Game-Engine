@@ -1,12 +1,13 @@
 package com.forcex.anim;
-import java.util.*;
+
+import java.util.ArrayList;
 
 /**
  * AnimationTrack class manages animation frames and timing.
  */
 public class AnimationTrack {
 
-    private ArrayList<Track> frames = new ArrayList<>();
+    private final ArrayList<Track> frames = new ArrayList<>();
     private float track_timer = 0.0f;
     private float duration = 0f;
     private boolean repeat = false;
@@ -21,7 +22,8 @@ public class AnimationTrack {
 
         /**
          * Constructor for Track class.
-         * @param time The time at which this frame occurs.
+         *
+         * @param time   The time at which this frame occurs.
          * @param object The object representing the frame's state.
          */
         public Track(float time, Object object) {
@@ -33,18 +35,20 @@ public class AnimationTrack {
     /**
      * Interface for handling interpolation between frames.
      */
-    public static interface onInterpolateListener {
+    public interface onInterpolateListener {
         /**
          * Interpolates between two frames' states.
+         *
          * @param prv The previous frame's state.
          * @param nxt The next frame's state.
-         * @param p The progress between previous and next frames (0 to 1).
+         * @param p   The progress between previous and next frames (0 to 1).
          */
-        public void interpolate(Object prv, Object nxt, float p);
+        void interpolate(Object prv, Object nxt, float p);
     }
 
     /**
      * Sets the interpolation listener.
+     *
      * @param interpolation The interpolation listener.
      */
     public void setInterpolation(onInterpolateListener interpolation) {
@@ -53,8 +57,9 @@ public class AnimationTrack {
 
     /**
      * Adds a frame to the animation.
+     *
      * @param time The time at which the frame occurs.
-     * @param obj The object representing the frame's state.
+     * @param obj  The object representing the frame's state.
      */
     public void add(float time, Object obj) {
         frames.add(new Track(time, obj));
@@ -75,6 +80,7 @@ public class AnimationTrack {
 
     /**
      * Retrieves the previous frame.
+     *
      * @return The previous frame.
      */
     private Track getPrevius() {
@@ -96,6 +102,7 @@ public class AnimationTrack {
 
     /**
      * Retrieves the next frame.
+     *
      * @return The next frame.
      */
     private Track getNext() {
@@ -118,6 +125,7 @@ public class AnimationTrack {
 
     /**
      * Sets whether the animation should repeat.
+     *
      * @param z Whether to repeat the animation.
      */
     public void setRepeat(boolean z) {
@@ -126,6 +134,7 @@ public class AnimationTrack {
 
     /**
      * Retrieves the current track time.
+     *
      * @return The current track time.
      */
     public float getTrackTime() {
@@ -134,6 +143,7 @@ public class AnimationTrack {
 
     /**
      * Retrieves the duration of the animation.
+     *
      * @return The duration of the animation.
      */
     public float getDuration() {
@@ -142,6 +152,7 @@ public class AnimationTrack {
 
     /**
      * Updates the animation based on time delta.
+     *
      * @param delta The time delta.
      */
     public void update(float delta) {

@@ -2,8 +2,8 @@ package com.forcex.app;
 
 public class Game {
 
-    Screen current;
-	
+    private Screen current;
+
     public void setScreen(Screen screen) {
         current = screen;
     }
@@ -15,11 +15,10 @@ public class Game {
     }
 
     public void render(float deltaTime) {
-		
         if (current != null) {
             current.render(deltaTime);
         }
-		
+
     }
 
     public void resize(int width, int height) {
@@ -29,16 +28,16 @@ public class Game {
     }
 
     public void resume() {
-		if (current != null) {
+        if (current != null) {
             current.resume();
         }
     }
 
     public int pause(int type) {
-		if (current != null) {
+        if (current != null) {
             return current.pause(type);
         }
-		return 1;
+        return 1;
     }
 
     public void destroy() {

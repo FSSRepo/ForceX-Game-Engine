@@ -14,5 +14,5 @@ public interface SystemDevice {
 	void destroy();
 	boolean isJDKDesktop();
 	int getAndroidVersion();
-	void invokeFileChooser(boolean open,String label,String def_name,OnAndroidFileStream listener);
+	void invokeFileChooser(boolean open, String label, String def_name, OnAndroidFileStream listener);
 }
