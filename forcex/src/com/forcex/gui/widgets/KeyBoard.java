@@ -89,10 +89,10 @@ public class KeyBoard {
             keys.get(29 + i).key_pos.set(dx + ((i + 1) * (key_width * 2.1f)), dy);
         }
         KeyButton mayus = new KeyButton(0, dx, dy, key_width);
-        mayus.icon = Texture.load(FX.homeDirectory + "gui/shift.png");
+        mayus.icon = Texture.load("gui/shift.png");
         buttons.add(mayus);
         KeyButton delete = new KeyButton(1, keys.get(9).key_pos.x, dy, key_width);
-        delete.icon = Texture.load(FX.homeDirectory + "gui/backspace.png");
+        delete.icon = Texture.load("gui/backspace.png");
         buttons.add(delete);
         dy -= key_height * 2f;
         KeyButton symbols = new KeyButton(2, dx, dy, key_width);
@@ -102,7 +102,7 @@ public class KeyBoard {
         space.text = "Space";
         buttons.add(space);
         KeyButton enter = new KeyButton(4, keys.get(9).key_pos.x, dy, key_width);
-        enter.icon = Texture.load(FX.homeDirectory + "gui/enter.png");
+        enter.icon = Texture.load("gui/enter.png");
         buttons.add(enter);
         // signs
         dy = (position.y + height) - key_height;

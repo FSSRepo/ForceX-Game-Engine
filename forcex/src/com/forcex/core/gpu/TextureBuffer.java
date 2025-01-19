@@ -1,8 +1,8 @@
 package com.forcex.core.gpu;
 
 public class TextureBuffer{
-	public short width;
-	public short height;
+	public int width;
+	public int height;
 	public int type;
 	public byte[] data;
 	

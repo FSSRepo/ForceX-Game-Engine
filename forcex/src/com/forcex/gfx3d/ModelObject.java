@@ -17,7 +17,7 @@ public class ModelObject {
     private boolean lighting;
     private Animator animator;
     private String name = "model";
-    private short id;
+    private short id = -1;
     private boolean shadow_map_cullface = true;
     private boolean effect_animator = true;
 
@@ -38,20 +38,16 @@ public class ModelObject {
         visible = true;
     }
 
-    public void setMesh(Mesh mesh) {
-        this.mesh = mesh;
-    }
-
     public Mesh getMesh() {
         return mesh;
     }
 
-    public void setPosition(float x, float y, float z) {
-        transform.setLocation(x, y, z);
+    public void setMesh(Mesh mesh) {
+        this.mesh = mesh;
     }
 
-    public void setPosition(Vector3f position) {
-        transform.setLocation(position);
+    public void setPosition(float x, float y, float z) {
+        transform.setLocation(x, y, z);
     }
 
     public void applyRotationAxis(Vector3f axis, float angle) {
@@ -83,32 +79,32 @@ public class ModelObject {
         return transform.getLocation(position);
     }
 
-    public Quaternion getRotationQuaternion() {
-        return transform.getRotation(rotation);
+    public void setPosition(Vector3f position) {
+        transform.setLocation(position);
     }
 
-    public void setTransform(Matrix4f other) {
-        transform.set(other);
+    public Quaternion getRotationQuaternion() {
+        return transform.getRotation(rotation);
     }
 
     public Matrix4f getTransform() {
         return transform;
     }
 
-    public void update() {
-        mesh.update();
+    public void setTransform(Matrix4f other) {
+        transform.set(other);
     }
 
-    public void setID(int id) {
-        this.id = (short) id;
+    public void update() {
+        mesh.update();
     }
 
     public short getID() {
         return id;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setID(int id) {
+        this.id = (short) id;
     }
 
     public void setEffectAnimator(boolean z) {
@@ -119,12 +115,8 @@ public class ModelObject {
         return name;
     }
 
-    public void setAnimator(Animator animator) {
-        this.animator = animator;
-    }
-
-    public void setVisible(boolean z) {
-        this.visible = z;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public boolean hasAnimator() {
@@ -135,16 +127,24 @@ public class ModelObject {
         return visible;
     }
 
+    public void setVisible(boolean z) {
+        this.visible = z;
+    }
+
     public Animator getAnimator() {
         return animator;
     }
 
-    public void setShadowMapCullfaceEnabled(boolean z) {
-        shadow_map_cullface = z;
+    public void setAnimator(Animator animator) {
+        this.animator = animator;
     }
 
     public boolean isShadowMapCullfaceEnabled() {
         return shadow_map_cullface;
+    }
+
+    public void setShadowMapCullfaceEnabled(boolean z) {
+        shadow_map_cullface = z;
     }
 
     public void setLighting(boolean z) {
@@ -157,8 +157,7 @@ public class ModelObject {
             FX.gl.glEnable(GL.GL_BLEND);
             FX.gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
             if (!mesh.isClone && !mesh.started) {
-                mesh.update();
-                mesh.started = true;
+                mesh.initialize();
             }
             if (animator != null && effect_animator) {
                 if (!shader.flag(DefaultShader.SHADOW_MAP_FLAG)) {

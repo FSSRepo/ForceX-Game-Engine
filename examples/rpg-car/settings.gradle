@@ -1,2 +1,0 @@
-rootProject.name='car-rpg-example'
-include 'android', 'core', 'desktop'

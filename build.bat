@@ -128,10 +128,6 @@ if "%android%"=="TRUE" (
             copy /V "%%f" "dist\windows\libs" 2>nul
         )
 
-        for /f "delims=" %%f in ('dir /a-d /b /s "windows-backend\libs\natives\*.dll"') do (
-            copy /V "%%f" "dist\windows" 2>nul
-        )
-
         gradlew windows-backend:assemble
     )
 )

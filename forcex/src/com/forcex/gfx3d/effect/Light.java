@@ -7,7 +7,7 @@ public class Light
 	private Vector3f position;
 	private Color color;
 	private Color ambient;
-	private Matrix4f projectionMatrix = null,lookAt = null,projView = null;
+	private Matrix4f projectionMatrix = null, lookAt = null, projView = null;
 	public Vector3f target;
 	
 	public Light(){

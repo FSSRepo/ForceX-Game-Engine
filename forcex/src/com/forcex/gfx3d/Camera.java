@@ -2,7 +2,6 @@ package com.forcex.gfx3d;
 
 import com.forcex.FX;
 import com.forcex.app.EventType;
-import com.forcex.math.Maths;
 import com.forcex.math.Matrix4f;
 import com.forcex.math.Quaternion;
 import com.forcex.math.Ray;
@@ -18,7 +17,7 @@ public class Camera {
     public Vector3f direction = new Vector3f(0, 0, -1);
     public Vector3f up = new Vector3f(0, 1, 0);
 
-    float fov = 50, aspectRatio, near = 0.1f, far = 1000f;
+    float fov = 60, aspectRatio, near = 0.1f, far = 1000f;
     boolean update = true;
     Vector4f plane_ext;
     boolean smooth_delta = false;
@@ -27,6 +26,12 @@ public class Camera {
     boolean delta_first = true;
     float resistance = 1f;
     boolean use_up_z;
+
+    // orbit camera, no lock
+    public Vector3f relative_position = new Vector3f();
+    public Vector3f orbit_point = new Vector3f();
+    public float distance = 4, rot_x = 0, rot_y = 0;
+    public boolean orbit_cam = false;
 
     public enum ProjectionType {
         ORTHOGRAPHIC,
@@ -114,8 +119,8 @@ public class Camera {
         up.normalize();
     }
 
-    public void zoom(float dist) {
-        position.subLocal(direction.mult(dist));
+    public void zoom(float amount) {
+        position.addLocal(direction.mult(amount));
     }
 
     public void update() {
@@ -127,27 +132,32 @@ public class Camera {
             }
             update = false;
         }
-        if (smooth_delta && deltaX != 0 && deltaY != 0 && touch_time > 0) {
-            if (delta_first) {
-                touch_time = Math.min(touch_time, 1.4f);
-                timelapse = Maths.abs(1.4f - touch_time);
-                deltaX = Maths.clamp(deltaX, -30, 30);
-                deltaY = Maths.clamp(deltaY, -30, 30);
-                deltaX = deltaX * touch_time * resistance;
-                deltaY = deltaY * touch_time * resistance;
-                delta_first = false;
-            }
-            float nx = deltaX * timelapse;
-            float ny = deltaY * timelapse;
-            orbit(ny, nx);
-            if (timelapse > 0) {
-                timelapse -= FX.gpu.getDeltaTime();
-            } else {
-                deltaX = 0;
-                deltaY = 0;
-            }
 
+        if(orbit_cam) {
+            position.set(calculateOrbit()).addLocal(orbit_point);
+            lookAt(orbit_point);
         }
+
+//        if (smooth_delta && deltaX != 0 && deltaY != 0 && touch_time > 0) {
+//            if (delta_first) {
+//                touch_time = Math.min(touch_time, 1.4f);
+//                timelapse = Maths.abs(1.4f - touch_time);
+//                deltaX = Maths.clamp(deltaX, -30, 30);
+//                deltaY = Maths.clamp(deltaY, -30, 30);
+//                deltaX = deltaX * touch_time * resistance;
+//                deltaY = deltaY * touch_time * resistance;
+//                delta_first = false;
+//            }
+//            float nx = deltaX * timelapse;
+//            float ny = deltaY * timelapse;
+//            orbit(ny, nx);
+//            if (timelapse > 0) {
+//                timelapse -= FX.gpu.getDeltaTime();
+//            } else {
+//                deltaX = 0;
+//                deltaY = 0;
+//            }
+//        }
         projectMatrix.mult(ProjViewMatrix, viewMatrix.setlookAt(position, direction, up));
     }
 
@@ -209,6 +219,10 @@ public class Camera {
         }
     }
 
+    public Vector3f calculateOrbit() {
+        return relative_position.rotateOnSphereOrigin(distance, rot_x, rot_y, false);
+    }
+
     public void updateDelta(float x, float y) {
         if (!smooth_delta) {
             return;
@@ -219,31 +233,6 @@ public class Camera {
 
     public void setUseZUp(boolean z) {
         this.use_up_z = z;
-    }
-
-    public void orbit(Vector3f point, float x, float y) {
-        Vector3f around = point.sub(position);
-        position.addLocal(around);
-        if (!use_up_z) {
-            around.rotY(y);
-        } else {
-            around.rotZ(y);
-        }
-        Vector3f side = up.cross(direction).normalize();
-        around.multLocal(Matrix4f.setRotation(new Matrix4f(), x, side));
-        position.subLocal(around);
-        lookAt(point);
-    }
-
-    public void orbit(float x, float y) {
-        if (!use_up_z) {
-            position.rotY(y);
-        } else {
-            position.rotZ(y);
-        }
-        Vector3f side = up.cross(direction).normalize();
-        position.multLocal(Matrix4f.setRotation(new Matrix4f(), x, side));
-        lookAt(0, 0, 0);
     }
 
     public void delete() {

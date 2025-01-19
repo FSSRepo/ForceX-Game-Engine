@@ -1,39 +1,41 @@
 package com.forcex.utils;
 
-import com.forcex.io.FileUtils;
+import com.forcex.FX;
+import com.forcex.io.BinaryStreamReader;
+import com.forcex.io.FileSystem;
 
 import java.util.HashMap;
 import java.util.Set;
 
 public class LanguageString {
-    HashMap<String, String> lines = new HashMap<>();
+    HashMap<String, String> texts = new HashMap<>();
 
     public LanguageString(String path) {
         try {
-            String[] lns = FileUtils.readStringText(path).split("\n");
-            for (String line : lns) {
+            BinaryStreamReader is = FX.fs.open(path, FileSystem.ReaderType.MEMORY);
+            String[] lines = new String(is.getData()).split("\n");
+            for (String line : lines) {
                 if (line.length() == 0 || line.startsWith("#")) {
                     continue;
                 }
                 line = line.replace(" = ", "=");
                 String[] token = line.split("=");
-                lines.put(token[0].replace(" ", ""), token[1].replace("-nl", "\n"));
+                texts.put(token[0].replace(" ", ""), token[1].replace("-nl", "\n"));
             }
-            lns = null;
         } catch (Exception e) {
-            Logger.log(e.toString());
+            e.printStackTrace();
         }
     }
 
     public Set<String> getIds() {
-        return lines.keySet();
+        return texts.keySet();
     }
 
     public String get(String id, Object... data) {
         // s[format] i[id] i[]=obj
-        if (lines.containsKey(id)) {
+        if (texts.containsKey(id)) {
             String process = "";
-            String eval = lines.get(id);
+            String eval = texts.get(id);
             int obj_offset = 0;
             for (int i = 0; i < eval.length(); i++) {
                 char start = eval.charAt(i);

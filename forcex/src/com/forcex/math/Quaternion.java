@@ -77,6 +77,12 @@ public class Quaternion {
         return new Quaternion(newX, newY, newZ, newW);
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        Quaternion q = (Quaternion) obj;
+        return w == q.w && x == q.x && y == q.y && z == q.z;
+    }
+
     public Quaternion mult(float s) {
         w *= s;
         x *= s;
@@ -146,7 +152,7 @@ public class Quaternion {
         return addLocal(other.subLocal(this).mult(t));
     }
 
-    public Quaternion slerp(Quaternion end, float porcent) {
+    public Quaternion slerp(Quaternion end, float percent) {
         float cosTheta = Maths.abs(dot(end)) / Maths.sqrt(lengthSquared() * end.lengthSquared());
         if (cosTheta >= 1.0f) {
             return this;
@@ -157,8 +163,8 @@ public class Quaternion {
             return this;
         }
         float rs = 1.0f / sinTheta;
-        float f1 = Maths.sin((1.0f - porcent) * theta);
-        float f2 = Maths.sin(porcent * theta);
+        float f1 = Maths.sin((1.0f - percent) * theta);
+        float f2 = Maths.sin(percent * theta);
         if (dot(end) < 0.0f) {
             return new Quaternion(
                     (x * f1 - end.x * f2) * rs,

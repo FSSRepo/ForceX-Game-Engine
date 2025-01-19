@@ -59,9 +59,15 @@ public class Node {
         children.add(node);
     }
 
+    public ArrayList<Node> getChildren() {
+        return children;
+    }
+
     public String getName() {
         return name;
     }
+
+    public int getID() { return id; }
 
     public void setID(short id) {
         this.id = id;
@@ -84,6 +90,10 @@ public class Node {
             return new Matrix4f(rotation_matrix).setLocation(position);
         }
         return Matrix4f.fromTransform(rotation, position);
+    }
+
+    public Node getParent() {
+        return parent;
     }
 
     public boolean isRoot() {

@@ -168,20 +168,20 @@ public class Mesh {
     protected void render(DefaultShader shader, boolean lighting) {
         preRender();
         vbo.bind();
-        vbo.EnableVertexAttrib(shader.attrib_position, 3, 0);
+        vbo.enableVertexAttrib(shader.attrib_position, 3, 0);
         VertexInfo v_info = getVertexInfo();
         if (v_info.hasTextureCoords()) {
-            vbo.EnableVertexAttrib(shader.attrib_texcoord, 2, v_info.tex_coord_offset);
+            vbo.enableVertexAttrib(shader.attrib_texcoord, 2, v_info.tex_coord_offset);
         }
         if ((v_info.hasNormals() && shader.flag(DefaultShader.LIGHTING_FLAG)) && lighting) {
-            vbo.EnableVertexAttrib(shader.attrib_normal, 3, v_info.normal_offset);
+            vbo.enableVertexAttrib(shader.attrib_normal, 3, v_info.normal_offset);
         }
         if ((v_info.hasTangents() && shader.flag(DefaultShader.NORMAL_MAP_FLAG)) && lighting) {
-            vbo.EnableVertexAttrib(shader.attrib_tangent, 3, v_info.tangent_ofs);
-            vbo.EnableVertexAttrib(shader.attrib_bitangent, 3, v_info.bitangent_ofs);
+            vbo.enableVertexAttrib(shader.attrib_tangent, 3, v_info.tangent_ofs);
+            vbo.enableVertexAttrib(shader.attrib_bitangent, 3, v_info.bitangent_ofs);
         }
         if ((v_info.hasColors() && shader.flag(DefaultShader.COLOR_FLAG))) {
-            vbo.EnableVertexAttrib(shader.attrib_color, 4, v_info.color_offset);
+            vbo.enableVertexAttrib(shader.attrib_color, 4, v_info.color_offset);
         }
         shader.setPointSize(pointSize);
         shader.setUseSkeleton(false);
@@ -193,24 +193,24 @@ public class Mesh {
     protected void render(DefaultShader shader, boolean lighting, Animator animator) {
         preRender();
         vbo.bind();
-        vbo.EnableVertexAttrib(shader.attrib_position, 3, 0);
+        vbo.enableVertexAttrib(shader.attrib_position, 3, 0);
         VertexInfo v_info = getVertexInfo();
         if (v_info.hasTextureCoords()) {
-            vbo.EnableVertexAttrib(shader.attrib_texcoord, 2, v_info.tex_coord_offset);
+            vbo.enableVertexAttrib(shader.attrib_texcoord, 2, v_info.tex_coord_offset);
         }
         if ((v_info.hasNormals() && shader.flag(DefaultShader.LIGHTING_FLAG)) && lighting) {
-            vbo.EnableVertexAttrib(shader.attrib_normal, 3, v_info.normal_offset);
+            vbo.enableVertexAttrib(shader.attrib_normal, 3, v_info.normal_offset);
         }
         if ((v_info.hasTangents() && shader.flag(DefaultShader.NORMAL_MAP_FLAG)) && lighting) {
-            vbo.EnableVertexAttrib(shader.attrib_tangent, 3, v_info.tangent_ofs);
-            vbo.EnableVertexAttrib(shader.attrib_bitangent, 3, v_info.bitangent_ofs);
+            vbo.enableVertexAttrib(shader.attrib_tangent, 3, v_info.tangent_ofs);
+            vbo.enableVertexAttrib(shader.attrib_bitangent, 3, v_info.bitangent_ofs);
         }
         if ((v_info.hasColors() && shader.flag(DefaultShader.COLOR_FLAG))) {
-            vbo.EnableVertexAttrib(shader.attrib_color, 4, v_info.color_offset);
+            vbo.enableVertexAttrib(shader.attrib_color, 4, v_info.color_offset);
         }
         if ((v_info.hasBones() && shader.flag(DefaultShader.ANIMATION_FLAG))) {
-            vbo.EnableVertexAttrib(shader.attrib_bonew, 4, v_info.bone_weights_offset);
-            vbo.EnableVertexAttrib(shader.attrib_bonei, 4, v_info.bone_indices_offset);
+            vbo.enableVertexAttrib(shader.attrib_bone_wights, 4, v_info.bone_weights_offset);
+            vbo.enableVertexAttrib(shader.attrib_bone_indices, 4, v_info.bone_indices_offset);
         }
         shader.setPointSize(pointSize);
         shader.setBoneMatrices(animator.getBoneMatrices());

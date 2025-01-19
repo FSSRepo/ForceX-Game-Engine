@@ -1,14 +1,15 @@
 package com.forcex.gfx3d.shader;
-import com.forcex.utils.*;
-import com.forcex.math.*;
-import com.forcex.io.*;
-import com.forcex.*;
+
+import com.forcex.math.Matrix2f;
+import com.forcex.math.Matrix4f;
+import com.forcex.math.Vector2f;
+import com.forcex.utils.Color;
 
 public class SpriteShader extends ShaderProgram {
     public int attribute_vertex;
-	public int attribute_colors;
+    public int attribute_colors;
     Vector2f tmp = new Vector2f();
-	Color temp_color;
+    Color temp_color;
     int u_MVPMatrix;
     int u_Position;
     int u_TexInfo;
@@ -25,23 +26,23 @@ public class SpriteShader extends ShaderProgram {
         this.use2d = use2d;
         this.useBlendTextured = useBlendTex;
         this.useColor = useColor;
-		temp_color = new Color(Color.WHITE);
+        temp_color = new Color(Color.WHITE);
         String prefix = "";
         if (use2d) {
             prefix += "#define useIn2dFlag\n";
         }
         if (useBlendTex) {
-			prefix += "#define useBlendTextured\n";
+            prefix += "#define useBlendTextured\n";
         }
-		if (useColor) {
-			prefix += "#define useColor\n";
-		}
-        createProgram(prefix + FileUtils.readStringText(FX.homeDirectory + "shaders/sprite.vs"),prefix + FileUtils.readStringText(FX.homeDirectory + "shaders/sprite.fs"));
+        if (useColor) {
+            prefix += "#define useColor\n";
+        }
+        createProgram("shaders/sprite.vs", "shaders/sprite.fs", prefix);
         attribute_vertex = getAttribLocation("vertex");
-		attribute_colors = getAttribLocation("aColor");
-		if (use2d) {
+        attribute_colors = getAttribLocation("aColor");
+        if (use2d) {
             u_Position = getUniformLocation("position");
-            u_mat2d = getUniformLocation("mat2d");	
+            u_mat2d = getUniformLocation("mat2d");
         } else {
             u_MVPMatrix = getUniformLocation("uMVPMatrix");
         }
@@ -53,17 +54,17 @@ public class SpriteShader extends ShaderProgram {
         if (useColor) {
             u_color = getUniformLocation("color");
         }
-		start();
-		setInt(getUniformLocation("uTexture"),0);
-		stop();
+        start();
+        setInt(getUniformLocation("uTexture"), 0);
+        stop();
     }
 
     public void setSpriteColor(Color color) {
         if (useColor) {
-			if(color == null){
-				setColor4(u_color, temp_color);
-				return;
-			}
+            if (color == null) {
+                setColor4(u_color, temp_color);
+                return;
+            }
             setColor4(u_color, color);
         }
     }
@@ -87,12 +88,12 @@ public class SpriteShader extends ShaderProgram {
             setMatrix2f(u_mat2d, matrix);
         }
     }
-	
-	public void setSpriteTransform(Matrix2f matrix){
-		if(use2d){
-			setMatrix2f(u_mat2d,matrix);
-		}
-	}
+
+    public void setSpriteTransform(Matrix2f matrix) {
+        if (use2d) {
+            setMatrix2f(u_mat2d, matrix);
+        }
+    }
 
     public void setMVPMatrix(Matrix4f m4) {
         setMatrix4f(u_MVPMatrix, m4);

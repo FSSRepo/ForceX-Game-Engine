@@ -17,6 +17,11 @@ public class Animator {
     private final SkeletonNode skeleton;
     private byte numBone = 0;
 
+    boolean inverse_time = false;
+
+    float animation_duration = 0, internal_time = 0;
+    boolean finished_state = false;
+
     /**
      * Constructor for the Animator class.
      *
@@ -34,8 +39,11 @@ public class Animator {
      *
      * @param anim The animation to be played.
      */
-    public void doAnimation(Animation anim) {
+    public void doAnimation(Animation anim, boolean inverse) {
         control.time = 0;
+        animation_duration = anim.getDuration();
+        internal_time = 0;
+        this.inverse_time = inverse;
         animation = anim;
     }
 
@@ -63,14 +71,34 @@ public class Animator {
         if (animation == null) {
             return;
         }
-        control.time += FX.gpu.getDeltaTime() * control.speed;
-        if (control.time > animation.getDuration() && control.loop) {
-            control.time %= animation.getDuration();
+        if(inverse_time) {
+            internal_time += FX.gpu.getDeltaTime() * control.speed;
+            control.time = animation_duration - internal_time;
         } else {
-            if (control.time > animation.getDuration()) {
+            control.time += FX.gpu.getDeltaTime() * control.speed;
+        }
+
+        if (finished()) {
+            if(control.loop) {
+                control.time %= animation_duration;
+            } else {
                 control.play = false;
             }
+            finished_state = true;
         }
+    }
+
+    public boolean finished() {
+        return control.time > animation_duration ||
+                inverse_time && internal_time > animation_duration;
+    }
+
+    public boolean finishedNotify() {
+        if(finished_state) {
+            finished_state = false;
+            return true;
+        }
+        return false;
     }
 
     /**

@@ -68,7 +68,7 @@ public class Text extends Mesh {
                 uvs[offset * 2 + 1] = v_end;
                 offset++;
             }
-            cursorX += font.charWidths[(byte) c & 0xff];
+            cursorX += font.char_widths[(byte) c & 0xff];
         }
         for (offset = 0; offset < vertices.length; offset++) {
             vertices[offset] *= scale;
@@ -111,7 +111,7 @@ public class Text extends Mesh {
     private float getTextWidth(String text) {
         float text_width = 0.0f;
         for (short i = 0; i < text.length(); i++) {
-            text_width += font.charWidths[(byte) text.charAt(i) & 0xff];
+            text_width += font.char_widths[(byte) text.charAt(i) & 0xff];
         }
         return text_width;
     }

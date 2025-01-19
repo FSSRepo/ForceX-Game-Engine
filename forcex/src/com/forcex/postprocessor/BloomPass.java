@@ -15,10 +15,7 @@ public class BloomPass extends Pass {
         this.bright = bright;
         this.hBlur = horizontal_blur;
         this.vBlur = vertical_blur;
-
-        shader = new ShaderProgram();
-        shader.createProgram(
-                Utils.vdefault,
+        shader = new ShaderProgram(Utils.vdefault,
                 (FX.gpu.isOpenGLES() ? "precision mediump float;\n" : "") +
                         "varying vec2 texcoords;\n" +
                         "uniform sampler2D texture;\n" +
@@ -40,7 +37,7 @@ public class BloomPass extends Pass {
         bright.process(colorTexture);
         hBlur.process(bright.getTexture());
         vBlur.process(hBlur.getTexture());
-        if (renderfbo) {
+        if (render_in_framebuffer) {
             fbo.begin();
             render(colorTexture, vBlur.getTexture());
             fbo.end();

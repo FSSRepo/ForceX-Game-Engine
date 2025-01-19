@@ -20,13 +20,13 @@ public class BrightnessPass extends Pass {
                         "	vec4 color = texture2D(texture,texcoords);\n" +
                         "	float bightness = (color.r * 0.30) + (color.g * 0.45) + (color.b * 0.15);\n" +
                         "	gl_FragColor = color * bightness;" +
-                        "}");
+                        "}", "");
         shader.attrib_position = shader.getAttribLocation("positions");
-        renderfbo = true;
+        render_in_framebuffer = true;
     }
 
     public void process(int texture) {
-        if (renderfbo) {
+        if (render_in_framebuffer) {
             fbo.begin();
             render(texture);
             fbo.end();

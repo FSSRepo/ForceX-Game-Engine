@@ -12,7 +12,7 @@ varying vec2 texcoord;
 varying vec4 vColor;
 uniform sampler2D uTexture;
 
-void main(){
+void main() {
 	#ifdef useBlendTextured
 		vec4 tex1 = texture2D(uTexture,texcoord1);
 		vec4 tex2 = texture2D(uTexture,texcoord2);

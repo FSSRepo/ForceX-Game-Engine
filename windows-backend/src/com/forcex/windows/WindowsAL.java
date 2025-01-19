@@ -57,16 +57,18 @@ public class WindowsAL implements com.forcex.core.AL
 	@Override
 	public float[] alGetListener3f(int pname)
 	{
-		FloatBuffer fb = BufferUtils.createFloatBuffer(3);
-		AL10.alGetListener(pname,fb);
-		return fb.array();
+		float[] param1 = new float[1];
+		float[] param2 = new float[1];
+		float[] param3 = new float[1];
+		AL10.alGetListener3f(pname, param1, param2, param3);
+		return new float[] { param1[0], param2[0], param3[0] };
 	}
 
 	@Override
 	public float[] alGetListenerfv(int pname, int length)
 	{
 		FloatBuffer fb = BufferUtils.createFloatBuffer(length);
-		AL10.alGetListener(pname,fb);
+		AL10.alGetListenerfv(pname,fb);
 		return fb.array();
 	}
 
@@ -79,7 +81,7 @@ public class WindowsAL implements com.forcex.core.AL
 	@Override
 	public void alListenerfv(int pname, float[] values)
 	{
-		AL10.alListener(pname,BufferUtils.createFloatBuffer(values));
+		AL10.alListenerfv(pname, values);
 	}
 
 	@Override
@@ -122,16 +124,18 @@ public class WindowsAL implements com.forcex.core.AL
 	public float[] alGetSourcefv(int source, int pname, int length)
 	{
 		FloatBuffer fb = BufferUtils.createFloatBuffer(length);
-		AL10.alGetSource(source,pname,fb);
+		AL10.alGetSourcefv(source, pname, fb);
 		return fb.array();
 	}
 
 	@Override
 	public float[] alGetSource3f(int source, int pname)
 	{
-		FloatBuffer fb = BufferUtils.createFloatBuffer(3);
-		AL10.alGetSource(source,pname,fb);
-		return fb.array();
+		float[] param1 = new float[1];
+		float[] param2 = new float[1];
+		float[] param3 = new float[1];
+		AL10.alGetSource3f(source, pname, param1, param2, param3);
+		return new float[] { param1[0], param2[0], param3[0] };
 	}
 
 	@Override
@@ -155,13 +159,13 @@ public class WindowsAL implements com.forcex.core.AL
 	@Override
 	public void alSourcefv(int source, int pname, float[] values)
 	{
-		AL10.alSource(source,pname,BufferUtils.createFloatBuffer(values));
+		AL10.alSourcefv(source, pname, values);
 	}
 
 	@Override
 	public void alSource3f(int source, int pname, float x, float y, float z)
 	{
-		AL10.alSource3f(source,pname,x,y,z);
+		AL10.alSource3f(source, pname, x, y, z);
 	}
 
 	@Override

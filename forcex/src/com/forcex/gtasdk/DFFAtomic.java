@@ -5,8 +5,8 @@ public class DFFAtomic
 	public int frameIdx;
 	public int geoIdx;
 	
-	// no esencial
-	public int unknow1;
+	// no essential
+	public int unknown1;
 	public boolean hasRenderToRight;
 	public int RTRval1;
 	public int RTRval2;
@@ -21,7 +21,7 @@ public class DFFAtomic
 		atm.materialFxType = materialFxType;
 		atm.hasRenderToRight = hasRenderToRight;
 		atm.hasMaterialEffect = hasMaterialEffect;
-		atm.unknow1 = unknow1;
+		atm.unknown1 = unknown1;
 		return atm;
 	}
 }

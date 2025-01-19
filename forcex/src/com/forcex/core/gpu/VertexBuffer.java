@@ -63,7 +63,7 @@ public class VertexBuffer {
         gl.glBindBuffer(GL.GL_ARRAY_BUFFER, buffer);
     }
 
-    public void EnableVertexAttrib(int attrib_idx, int dimen, int offset) {
+    public void enableVertexAttrib(int attrib_idx, int dimen, int offset) {
         gl.glVertexAttribPointer(attrib_idx, dimen, GL.GL_FLOAT, false, vertex_info.stride, offset);
         gl.glEnableVertexAttribArray(attrib_idx);
     }

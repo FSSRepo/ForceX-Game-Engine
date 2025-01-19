@@ -42,7 +42,7 @@ public class Dialog {
         id = id_gen;
         id_gen++;
         this_is_priority = layout.context.isDialogEmpty();
-        close_texture = Texture.load(FX.homeDirectory + "gui/close.png");
+        close_texture = Texture.load("gui/close.png");
         if (!layout.context.addSlotDialog(this)) {
             Toast.error("Dialog Error:\nThere aren't slots availables.", 4f);
         }

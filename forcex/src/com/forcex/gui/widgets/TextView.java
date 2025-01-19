@@ -288,7 +288,7 @@ public class TextView extends View {
                 if (text.charAt(text_offset) == c) {
                     text_offset++;
                 }
-                cursorX += font.charWidths[(byte) c & 0xff];
+                cursorX += font.char_widths[(byte) c & 0xff];
             }
             if (text_offset < text.length() && text.charAt(text_offset) == '\n') {
                 text_offset++;
@@ -321,7 +321,7 @@ public class TextView extends View {
     public float getTextWidth(String text) {
         float text_width = 0.0f;
         for (short i = 0; i < text.length(); i++) {
-            text_width += font.charWidths[(byte) text.charAt(i) & 0xff];
+            text_width += font.char_widths[(byte) text.charAt(i) & 0xff];
         }
         return text_width;
     }
@@ -329,13 +329,13 @@ public class TextView extends View {
     public float getTextWidthReal(String text) {
         float text_width = 0.0f;
         for (short i = 0; i < text.length(); i++) {
-            text_width += font.charWidths[(byte) text.charAt(i) & 0xff];
+            text_width += font.char_widths[(byte) text.charAt(i) & 0xff];
         }
         return text_width * 0.5f * text_size;
     }
 
     public float getCharWidth(char c) {
-        return font.charWidths[(byte) c & 0xff] * 0.5f * text_size;
+        return font.char_widths[(byte) c & 0xff] * 0.5f * text_size;
     }
 
     private Color getColorSpan(int text_offset) {

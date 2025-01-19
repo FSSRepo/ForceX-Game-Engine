@@ -18,33 +18,32 @@ allprojects {
     }
 }
 
-project(":android") {
+project(":examples:rpg-car:android") {
     apply plugin: "android"
 
     dependencies {
-        implementation project(":core")
-        implementation files('libs/android-backend-release.aar')
-        // to avoid Class file not found
-        compileOnly files( '../glibs/forcex.jar')
+        implementation project(":examples:rpg-car:core")
+        implementation project(":android-backend")
+        compileOnly project(":forcex")
     }
 }
 
-project(":core") {
+project(":examples:rpg-car:core") {
     apply plugin: "java-library"
 
     dependencies {
-        implementation files('libs/libopenpl.jar', '../glibs/forcex.jar')
+        implementation files('libs/libopenpl.jar')
+        implementation project(":forcex")
     }
 }
 
-project(":desktop") {
+project(":examples:rpg-car:desktop") {
     apply plugin: "java-library"
 
     dependencies {
-        implementation project(":core")
-        implementation files('libs/forcex-windows-backend.jar', 'libs/jinput.jar', 'libs/lwjgl_util_applet.jar', 'libs/lwjgl_util.jar', 'libs/lwjgl.jar', 'libs/lzma.jar')
-        // to avoid Class file not found
-        compileOnly files( '../glibs/forcex.jar')
+        implementation project(":examples:rpg-car:core")
+        implementation project(":windows-backend")
+        compileOnly project(":forcex")
     }
 }
 

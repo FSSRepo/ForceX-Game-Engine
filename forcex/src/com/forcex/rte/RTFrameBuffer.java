@@ -50,7 +50,7 @@ public class RTFrameBuffer {
 	public void save(String output,String name,boolean emission) {
 		byte[] data = getTexture();
 		Image img = new Image(data,width,height);
-		img.save(output+"/"+name+".png");
+		img.save(output+"/"+name+".png", false);
 		img.clear();
 		img = null;
 		if(emission){
@@ -62,7 +62,7 @@ public class RTFrameBuffer {
 				data[i * 4 + 3] = (byte)(buffer[i].color.a * 255f);
 			}
 			img = new Image(data,width,height);
-			img.save(output+"/"+name+".emission.png");
+			img.save(output+"/"+name+".emission.png", false);
 			img.clear();
 		}
 	}

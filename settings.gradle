@@ -1,1 +1,2 @@
-include 'android-backend', 'forcex', 'windows-backend'
+include 'android-backend', 'forcex', 'windows-backend', 'examples:rpg-car', 'examples:rpg-car:android', 'examples:rpg-car:core', 'examples:rpg-car:desktop', 'examples:super-ai:core', 'examples:super-ai:desktop'
+rootProject.name = "forcex-engine"

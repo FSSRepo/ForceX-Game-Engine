@@ -34,8 +34,5 @@ add_library(
         forcex/jni/dxt/rangefit.cpp
         forcex/jni/dxt/singlecolourfit.cpp
         forcex/jni/dxt/squish.cpp
-        forcex/jni/png/lodepng.cpp
-        forcex/jni/png/lodepng_util.cpp
-        forcex/jni/png/pngdetail.cpp
         forcex/jni/main.cpp
         forcex/jni/rg_etc1.cpp)

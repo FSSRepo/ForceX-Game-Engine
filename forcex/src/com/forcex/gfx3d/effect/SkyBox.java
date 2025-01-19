@@ -34,7 +34,7 @@ public class SkyBox{
 			"varying vec3 vcolors;"+
 			"void main(){"+
 			"	gl_FragColor = vec4(vcolors,1.0);"+
-			"}");
+			"}", "");
 		vertex_idx = shader.getAttribLocation("vertexs");
 		color_idx = shader.getAttribLocation("colors");
 		mvp_idx = shader.getUniformLocation("mvp");

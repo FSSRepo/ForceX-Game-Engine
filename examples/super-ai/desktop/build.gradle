@@ -1,0 +1,21 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '7.0.0'
+}
+
+sourceCompatibility = 1.8
+java.targetCompatibility = JavaVersion.VERSION_1_8
+sourceSets.main.java.srcDirs = ["src/"]
+
+shadowJar {
+    archiveName = 'super-ai.jar'
+
+    manifest {
+        attributes 'Main-Class': 'com.fss.ai.DesktopLauncher'
+    }
+}
+
+application {
+    mainClass = 'com.fss.ai.DesktopLauncher'
+}

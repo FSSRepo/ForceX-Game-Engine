@@ -95,7 +95,7 @@ public class FrameBuffer {
         return texture;
     }
 
-    public void deleteFBO() {
+    public void release() {
         gl.glDeleteRenderBuffer(rbo);
         gl.glDeleteFrameBuffer(fbo);
     }

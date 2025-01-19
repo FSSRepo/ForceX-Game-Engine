@@ -10,6 +10,7 @@ import com.forcex.utils.Image;
 import com.forcex.utils.Logger;
 import com.forcex.utils.VideoStack;
 
+import java.io.FileOutputStream;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
@@ -31,140 +32,135 @@ public class VideoClip {
 	private final GL gl;
     private byte[] next_frame;
     private boolean hasAlpha = false;
-    private String video;
+    private String video_path;
     private OnVideoClipListener listener;
 
-    public VideoClip(String video, VideoStack stack) {
-        this.video = video;
-        FileStreamReader os = new FileStreamReader(video);
-        width = os.readShort();
-        height = os.readShort();
-        blockSize = os.readInt();
-        hasAlpha = os.readByte() == 1;
-		byte framerate = os.readByte();
-        numFrames = os.readShort();
-        fileOffset = 12;
-        frame_time = 1.0f / framerate;
-        duration = numFrames * frame_time;
-        os.clear();
-        os = null;
+    public VideoClip(String path, VideoStack stack) {
+        this.video_path = path;
+        {
+            BinaryStreamReader is = FX.fs.open(path, FileSystem.ReaderType.STREAM);
+            width = is.readShort();
+            height = is.readShort();
+            blockSize = is.readInt();
+            hasAlpha = is.readByte() == 1;
+            byte frame_rate = is.readByte();
+            numFrames = is.readShort();
+            fileOffset = 12;
+            frame_time = 1.0f / frame_rate;
+            duration = numFrames * frame_time;
+            is.clear();
+        }
         gl = FX.gl;
         type = FX.gpu.isOpenGLES() ? GL.GL_TEXTURE_ETC1 : GL.GL_TEXTURE_DXT1;
         stack.add(this);
         next_frame = new byte[blockSize];
     }
 
-    public static void convertFromSequence(String path, int filenStart, int filenEnd, int framerate, int numFrames, boolean dxt, boolean alpha, OnVideoProcessListener listener) {
-        FileStreamWriter os = new FileStreamWriter(path + "result.fvp");
-        int blck_sz = 0, bitcount = 0;
-        float real_sz = 0, bitrate = 0;
-        String append = "";
-        boolean is_zip = false;
-        float ratio = 1f, predict = 0, time_mediana = 0;
-        for (int i = filenStart; i <= filenEnd; i++) {
-            long start = System.currentTimeMillis();
-            is_zip = false;
-            if (i < 10) {
-                append = "000";
-            } else if (i >= 10 && i < 100) {
-                append = "00";
-            } else if (i >= 100 && i < 1000) {
-                append = "0";
-            } else if (i >= 1000) {
-                append = "";
-            }
-            Image img = new Image(path + append + i + ".png");
-            if (i == filenStart) {
-                blck_sz = (img.width * img.height) / 2;
-                real_sz = (blck_sz * numFrames) / 1048576f;
-                os.writeShort(img.width); // ancho
-                os.writeShort(img.height); // alto
-                os.writeInt(blck_sz); // block size
-                os.writeByte(alpha ? 1 : 0); // contiene canal alpha
-                os.writeByte(framerate); // taza de frames
-                os.writeShort(numFrames); // numero de Frames
-            }
-            if (!dxt) {
-                byte[] buffer = CoreJni.etc1compress(img.getRGBAImage(), img.width, img.height, CoreJni.ETC1_LOW_QUALITY);
-                byte[] zip = encode(buffer);
-                if (zip.length > blck_sz) {
-                    os.writeByte(0);
-                    os.writeByteArray(buffer);
-                    ratio = 1;
-                    bitcount += blck_sz;
-                } else {
-                    os.writeByte(1);
-                    is_zip = true;
-                    os.writeInt(zip.length);
-                    ratio = (float) zip.length / blck_sz;
-                    os.writeByteArray(zip);
-                    bitcount += zip.length;
+    public static void convertFromSequence(String frames_path, int frame_idx_start, int frame_idx_end, int framerate, int numFrames, boolean dxt, boolean alpha, OnVideoProcessListener listener) {
+        try{
+            BinaryStreamWriter os = new BinaryStreamWriter(new FileOutputStream(frames_path + "result.fvp"));
+            int block_size = 0, byte_count = 0;
+            float real_sz = 0, bitrate = 0;
+            String append = "";
+            boolean is_zip = false;
+            float ratio = 1f, predict = 0;
+
+            for (int i = frame_idx_start; i <= frame_idx_end; i++) {
+                long start = System.currentTimeMillis();
+                is_zip = false;
+                if (i < 10) {
+                    append = "000";
+                } else if (i >= 10 && i < 100) {
+                    append = "00";
+                } else if (i >= 100 && i < 1000) {
+                    append = "0";
+                } else if (i >= 1000) {
+                    append = "";
                 }
-                if (alpha) {
-                    BitStream bs = new BitStream(img.width * img.height);
-                    for (int j = 0; j < (img.width * img.height); j++) {
-                        bs.put(img.getRGBAImage()[j * 4 + 3] < 240);
+                Image img = new Image(frames_path + append + i + ".png");
+                if (i == frame_idx_start) {
+                    block_size = (img.width * img.height) / 2;
+                    real_sz = (block_size * numFrames) / 1048576f;
+                    os.writeShort(img.width);
+                    os.writeShort(img.height);
+                    os.writeInt(block_size);
+                    os.writeByte(alpha ? 1 : 0);
+                    os.writeByte(framerate);
+                    os.writeShort(numFrames);
+                }
+                if (!dxt) {
+                    byte[] buffer = CoreJni.etc1compress(img.getRGBAImage(), img.width, img.height, CoreJni.ETC1_LOW_QUALITY);
+                    byte[] zip = encode(buffer);
+                    if (zip.length > block_size) {
+                        os.writeByte(0);
+                        os.writeByteArray(buffer);
+                        ratio = 1;
+                        byte_count += block_size;
+                    } else {
+                        os.writeByte(1);
+                        is_zip = true;
+                        os.writeInt(zip.length);
+                        ratio = (float) zip.length / block_size;
+                        os.writeByteArray(zip);
+                        byte_count += zip.length;
                     }
-                    zip = encode(bs.data);
-                    os.writeInt(zip.length);
-                    os.writeByteArray(zip);
-                }
-                zip = null;
-                buffer = null;
-            } else {
-                byte[] buffer = CoreJni.dxtcompress(img.getRGBAImage(), img.width, img.height, CoreJni.DXTC_1 | CoreJni.DXTC_RANGE_FIT);
-                os.writeByteArray(buffer);
-                byte[] zip = encode(buffer);
-                if (zip.length > blck_sz) {
-                    os.writeByte(0);
-                    os.writeByteArray(buffer);
-                    bitcount += blck_sz;
-                    ratio = 1;
-                } else {
-                    os.writeByte(1);
-                    is_zip = true;
-                    os.writeInt(zip.length);
-                    ratio = (float) zip.length / blck_sz;
-                    bitcount += zip.length;
-                    os.writeByteArray(zip);
-                }
-                if (alpha) {
-                    BitStream bs = new BitStream(img.width * img.height);
-                    for (int j = 0; j < (img.width * img.height); j++) {
-                        bs.put(img.getRGBAImage()[j * 4 + 3] < 240);
+                    if (alpha) {
+                        BitStream bs = new BitStream(img.width * img.height);
+                        for (int j = 0; j < (img.width * img.height); j++) {
+                            bs.put(img.getRGBAImage()[j * 4 + 3] < 240);
+                        }
+                        zip = encode(bs.data);
+                        os.writeInt(zip.length);
+                        os.writeByteArray(zip);
                     }
-                    zip = encode(bs.data);
-                    os.writeInt(zip.length);
-                    os.writeByteArray(zip);
+                } else {
+                    byte[] buffer = CoreJni.dxtcompress(img.getRGBAImage(), img.width, img.height, CoreJni.DXTC_1 | CoreJni.DXTC_RANGE_FIT);
+                    os.writeByteArray(buffer);
+                    byte[] zip = encode(buffer);
+                    if (zip.length > block_size) {
+                        os.writeByte(0);
+                        os.writeByteArray(buffer);
+                        byte_count += block_size;
+                        ratio = 1;
+                    } else {
+                        os.writeByte(1);
+                        is_zip = true;
+                        os.writeInt(zip.length);
+                        ratio = (float) zip.length / block_size;
+                        byte_count += zip.length;
+                        os.writeByteArray(zip);
+                    }
+                    if (alpha) {
+                        BitStream bs = new BitStream(img.width * img.height);
+                        for (int j = 0; j < (img.width * img.height); j++) {
+                            bs.put(img.getRGBAImage()[j * 4 + 3] < 240);
+                        }
+                        zip = encode(bs.data);
+                        os.writeInt(zip.length);
+                        os.writeByteArray(zip);
+                    }
                 }
-                buffer = null;
-                zip = null;
-            }
-            if ((i % framerate) == 0) {
-                bitrate = (bitcount * 8) / 1000000.0f;
-                bitcount = 0;
-            }
-            img.clear();
-            img = null;
-            predict += ratio;
-            if (i > 4) {
-                float ratio_f = (predict / i);
-                float delta = ((float) (i - filenStart + 1) / numFrames);
-                float size_pred = real_sz * ratio_f;
-                if (i == 5) {
-                    time_mediana /= 4;
-                    Toast.info(time_mediana + " Segundos por frame", time_mediana);
+                if ((i % framerate) == 0) {
+                    bitrate = (byte_count * 8) / 1000000.0f;
+                    byte_count = 0;
                 }
-                listener.process(
-                        String.format("%.2f", delta * 100f) + "%\n" +
-                                "Last: " + (is_zip ? "ZLib comp" : "Norm") + (bitrate > 0 ? "Bitrate: " + String.format("%.2f", bitrate) + "Mbps" : "") + "\n" +
-                                "Ratio: " + String.format("%.2f", ratio * 100f) + "%\n" +
-                                "Final: " + String.format("%.2f", size_pred) + "MB)");
-            } else {
-                time_mediana += ((System.currentTimeMillis() - start) / 1000.0f);
+                img.clear();
+                predict += ratio;
+                if (i > 4) {
+                    float ratio_f = (predict / i);
+                    float delta = ((float) (i - frame_idx_start + 1) / numFrames);
+                    float predicted_size = real_sz * ratio_f;
+                    listener.process(
+                            String.format("%.2f", delta * 100f) + "%\n" +
+                                    "Last: " + (is_zip ? "ZLib comp" : "Norm") + (bitrate > 0 ? "Bitrate: " + String.format("%.2f", bitrate) + "Mbps" : "") + "\n" +
+                                    "Ratio: " + String.format("%.2f", ratio * 100f) + "%\n" +
+                                    "Final: " + String.format("%.2f", predicted_size) + "MB)");
+                }
             }
+            os.finish();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        os.finish();
     }
 
     private static byte[] encode(byte[] input) {
@@ -172,10 +168,10 @@ public class VideoClip {
         df.setInput(input);
         df.finish();
         byte[] temp = new byte[input.length];
-        int lenght = df.deflate(temp);
+        int length = df.deflate(temp);
         df.end();
-        byte[] buffer = new byte[lenght];
-		System.arraycopy(temp, 0, buffer, 0, lenght);
+        byte[] buffer = new byte[length];
+		System.arraycopy(temp, 0, buffer, 0, length);
         return buffer;
     }
 
@@ -266,19 +262,18 @@ public class VideoClip {
 
     private void loadNextFrame() {
         try {
-            FileStreamReader os = new FileStreamReader(video);
-            os.skip(fileOffset);
-            boolean zip = os.readBoolean();
+            BinaryStreamReader is = FX.fs.open(video_path, FileSystem.ReaderType.STREAM);
+            is.skip(fileOffset);
+            boolean zip = is.readBoolean();
             if (zip) {
-                int size = os.readInt();
-                decode(os.readByteArray(size));
+                int size = is.readInt();
+                decode(is.readByteArray(size));
                 fileOffset += 5 + size;
             } else {
-                os.read(next_frame);
+                is.readByteArray(next_frame);
                 fileOffset += 1 + blockSize;
             }
-            os.clear();
-            os = null;
+            is.clear();
         } catch (Exception e) {
             Logger.log("ERROR: Video Streaming: " + e);
         }
@@ -305,7 +300,7 @@ public class VideoClip {
     public void delete() {
         gl.glDeleteTexture(texture);
         next_frame = null;
-        video = null;
+        video_path = null;
     }
 
     public interface OnVideoClipListener {

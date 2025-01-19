@@ -256,7 +256,6 @@ public class Matrix4f {
     public Matrix4f multLocal(Matrix4f other) {
         float[] nd = new float[16];
         mult_(nd, data, other.data);
-        data = null;
         data = nd;
         return this;
     }

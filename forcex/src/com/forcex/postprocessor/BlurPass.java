@@ -3,7 +3,6 @@ package com.forcex.postprocessor;
 import com.forcex.FX;
 import com.forcex.core.GL;
 import com.forcex.gfx3d.shader.ShaderProgram;
-import com.forcex.io.FileUtils;
 
 public class BlurPass extends Pass {
     public static final byte VERTICAL = 0;
@@ -14,31 +13,29 @@ public class BlurPass extends Pass {
     public BlurPass(byte type, boolean x4, int width, int height) {
         fbo = new FrameBuffer(width, height);
         shader = new ShaderProgram();
-        String vprefix = "";
+        String prefix = "";
         float pixelSize = 0;
         switch (type) {
             case 0:
                 pixelSize = 1f / (float) height;
-                vprefix += "#define blurVertical\n";
+                prefix += "#define blurVertical\n";
                 break;
             case 1:
                 pixelSize = 1f / (float) width;
                 break;
         }
         if (x4) {
-            vprefix += "#define blurx4\n";
+            prefix += "#define blurx4\n";
         }
-
-        vprefix += "const float pixelSize = " + pixelSize + ";\n";
+        prefix += "#define pixelSize " + pixelSize + "\n";
         shader.createProgram(
-                vprefix + FileUtils.readStringText(FX.homeDirectory + "shaders/blur.vs"),
-                (x4 ? "#define blurx4\n" : "") + FileUtils.readStringText(FX.homeDirectory + "shaders/blur.fs"));
+                "shaders/blur.vs", "shaders/blur.fs", prefix);
         shader.attrib_position = shader.getAttribLocation("positions");
-        renderfbo = true;
+        render_in_framebuffer = true;
     }
 
     public void process(int texture) {
-        if (renderfbo) {
+        if (render_in_framebuffer) {
             fbo.begin();
             render(texture);
             fbo.end();

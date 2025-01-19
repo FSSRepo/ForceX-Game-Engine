@@ -10,13 +10,10 @@ import java.nio.ByteBuffer;
 public class Texture {
 
     public static int load(String path) {
-        if (!new File(path).exists()) {
-            return genTextureWhite();
-        }
+        Image image = new Image(path);
         GL gl = FX.gl;
         int id = gl.glGenTexture();
         gl.glBindTexture(GL.GL_TEXTURE_2D, id);
-        Image image = new Image(path);
         gl.glTexImage2D(GL.GL_TEXTURE_2D, image.width, image.height, image.getBuffer());
         image.clear();
         gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
@@ -27,13 +24,10 @@ public class Texture {
     }
 
     public static int load(String path, boolean mipmapping) {
-        if (!new File(path).exists()) {
-            return genTextureWhite();
-        }
+        Image image = new Image(path);
         GL gl = FX.gl;
         int id = gl.glGenTexture();
         gl.glBindTexture(GL.GL_TEXTURE_2D, id);
-        Image image = new Image(path);
         gl.glTexImage2D(GL.GL_TEXTURE_2D, image.width, image.height, image.getBuffer());
         image.clear();
         if (mipmapping) {

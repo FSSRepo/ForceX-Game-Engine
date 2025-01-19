@@ -4,139 +4,186 @@ import com.forcex.FX;
 import com.forcex.app.Game;
 import com.forcex.app.InputListener;
 import com.forcex.core.SystemDevice;
+import com.forcex.io.BinaryStreamReader;
+import com.forcex.io.FileSystem;
 import com.forcex.utils.Image;
 
-import org.lwjgl.LWJGLException;
-import org.lwjgl.opengl.ContextAttribs;
-import org.lwjgl.opengl.Display;
-import org.lwjgl.opengl.DisplayMode;
-import org.lwjgl.opengl.PixelFormat;
+import org.lwjgl.PointerBuffer;
+import org.lwjgl.glfw.GLFWErrorCallback;
+import org.lwjgl.glfw.GLFWImage;
+import org.lwjgl.glfw.GLFWVidMode;
+import org.lwjgl.system.MemoryStack;
+
+import static org.lwjgl.glfw.Callbacks.*;
+import static org.lwjgl.glfw.GLFW.*;
+import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.system.MemoryStack.*;
+import static org.lwjgl.system.MemoryUtil.*;
 
 import java.io.File;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.IntBuffer;
 import java.util.ArrayList;
 
 public class ForceXApp implements SystemDevice {
 
-    GLRenderer render;
-    ArrayList<InputListener> inputs;
+    private GLRenderer renderer;
 
-	private static final int DEFAULT_WIDTH = 1280;
-	private static final int DEFAULT_HEIGHT = 1280;
+    // The window handle
+    protected long window;
 
-    public void initialize(Game game, String title) {
-        initialize(game, title, false);
-    }
+    InputProcessor input_processor;
 
-    public void initialize(Game game, String title, String icon_path) {
-        initialize(game, title, false, icon_path);
-    }
+    public void initialize(Game game, FXAppConfig config) {
+        FX.fs = new FileSystem() {
+            @Override
+            protected InputStream getAndroidAsset(String name) {
+                return null;
+            }
+        };
+        FileSystem.homeDirectory = config.resources_dir.length() == 0 ? "data/" : config.resources_dir;
+        GLFWErrorCallback.createPrint(System.err).set();
 
-    public void initialize(Game game, String title,
-                           boolean fullscreen) {
-        initialize(game, title, DEFAULT_WIDTH, DEFAULT_HEIGHT, fullscreen, false, "");
-    }
+        // Initialize GLFW. Most GLFW functions will not work before doing this.
+        if ( !glfwInit() )
+            throw new IllegalStateException("Unable to initialize GLFW");
 
-    public void initialize(Game game, String title,
-                           boolean fullscreen, String icon_path) {
-        initialize(game, title, DEFAULT_WIDTH, DEFAULT_HEIGHT, fullscreen, false, icon_path);
-    }
+        // Configure GLFW
+        glfwDefaultWindowHints();
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-    public void initialize(Game game, String title,
-                           boolean fullscreen, boolean vsync) {
-        initialize(game, title, DEFAULT_WIDTH, DEFAULT_HEIGHT, fullscreen, vsync, "");
-    }
+        PointerBuffer pb = glfwGetMonitors();
+        assert pb != null;
+//        long monitorId = pb.get(1);
 
-    public void initialize(Game game, String title, int width, int height, boolean fullscreen, boolean vsync, String icon_path) {
-        FX.homeDirectory = "data/";
-        ContextAttribs attribs = new ContextAttribs(3, 0);
-        attribs.withForwardCompatible(true);
-        try {
-            setDisplayMode(width, height, fullscreen);
-            Display.create(new PixelFormat(), attribs);
-        } catch (LWJGLException e) {
-            e.printStackTrace();
+        long primaryMonitor = glfwGetPrimaryMonitor();
+
+        // Create the window
+        window = glfwCreateWindow(config.width, config.height, config.title, config.fullscreen ? primaryMonitor : NULL, NULL);
+        if ( window == NULL )
+            throw new RuntimeException("Failed to create the GLFW window");
+
+        if(!config.fullscreen) {
+            try ( MemoryStack stack = stackPush() ) {
+                IntBuffer pWidth = stack.mallocInt(1); // int*
+                IntBuffer pHeight = stack.mallocInt(1); // int*
+                // Get the window size passed to glfwCreateWindow
+                glfwGetWindowSize(window, pWidth, pHeight);
+                // Get the resolution of the primary monitor
+                GLFWVidMode vidmode = glfwGetVideoMode(primaryMonitor);
+                // Center the window
+                glfwSetWindowPos(
+                        window,
+                        (vidmode.width() - pWidth.get(0)) / 2,
+                        (vidmode.height() - pHeight.get(0)) / 2
+                );
+            }
         }
-        inputs = new ArrayList<>();
-        render = new GLRenderer(game, this, vsync, width, height);
+
+        // Make the OpenGL context current
+        glfwMakeContextCurrent(window);
+        // Enable v-sync
+        glfwSwapInterval(config.vsync ? 1 : 0);
+        // Make the window visible
+        glfwShowWindow(window);
+
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+
+        boolean profile = false;
+        if (profile) {
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
+        } else {
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+            glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+        }
+
+        if(config.show_cursor) {
+            // hide cursor
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+        }
+
+        renderer = new GLRenderer(game, this);
+
         FX.device = this;
         FX.al = new WindowsAL();
         FX.alc = new WindowsSound();
-        Display.setVSyncEnabled(vsync);
-        Display.setTitle(title);
-        if (icon_path.length() > 0) {
+        input_processor = new InputProcessor(this);
+        input_processor.init();
+
+        if (config.icon_path.length() > 0) {
             int[] icons_sizes = {16, 32, 128};
-            ByteBuffer[] icons = new ByteBuffer[3];
+            ArrayList<ByteBuffer> icons_loaded = new ArrayList<>();
             for (int i = 0; i < 3; i++) {
-                if (new File(String.format(icon_path, icons_sizes[i])).exists()) {
-                    icons[i] = new Image(String.format(icon_path, icons_sizes[i])).getBuffer();
+                ByteBuffer icon_buf = null;
+                if (new File(String.format(config.icon_path, icons_sizes[i])).exists()) {
+                    icon_buf = new Image(String.format(config.icon_path, icons_sizes[i])).getBuffer();
                 } else {
-                    icons[i] = ByteBuffer.allocate(1).order(ByteOrder.nativeOrder());
+                    BinaryStreamReader is = FX.fs.open(String.format(config.icon_path, icons_sizes[i]), FileSystem.ReaderType.MEMORY);
+                    if(is != null) {
+                        icon_buf = new Image(is.getData()).getBuffer();
+                    } else {
+                        continue;
+                    }
                 }
+                icons_loaded.add(icon_buf);
             }
-            Display.setIcon(icons);
+            try (GLFWImage.Buffer icons_buffer = GLFWImage.malloc(icons_loaded.size()) ) {
+                for(int i = 0; i < icons_loaded.size(); i ++) {
+                    icons_buffer.position(i)
+                                .width(icons_sizes[i])
+                                .height(icons_sizes[i])
+                                .pixels(icons_loaded.get(i));
+                }
+                glfwSetWindowIcon(window, icons_buffer);
+            }
         }
-        render.create();
+
+        int[] arrWidth = new int[1];
+        int[] arrHeight = new int[1];
+        glfwGetFramebufferSize(window, arrWidth, arrHeight);
+        renderer.width = arrWidth[0];
+        renderer.height = arrHeight[0];
+        glfwSetFramebufferSizeCallback(window, (window, w, h) -> renderer.resize(w, h));
+        renderer.create();
+        renderer.loop();
     }
 
-    public void setTitle(String text) {
-        Display.setTitle(text);
+    protected boolean isCloseRequested() {
+        return glfwWindowShouldClose(window);
+    }
+
+    protected void update() {
+        glfwPollEvents();
+        glfwSwapBuffers(window);
+    }
+
+    protected boolean isVisible() {
+        return glfwGetWindowAttrib(window, GLFW_VISIBLE) == 1;
+    }
+
+    protected void destroyWindow() {
+        glfwFreeCallbacks(window);
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        GLFWErrorCallback callback = glfwSetErrorCallback(null);
+        if (callback != null) {
+            callback.free();
+        }
     }
 
     @Override
     public void addInputListener(InputListener input) {
-        this.inputs.add(input);
+        this.input_processor.inputs.add(input);
     }
 
-    private void setDisplayMode(int width, int height, boolean fullscreen) {
-        // return if requested DisplayMode is already set
-        if ((Display.getDisplayMode().getWidth() == width) &&
-                (Display.getDisplayMode().getHeight() == height) &&
-                (Display.isFullscreen() == fullscreen)) {
-            return;
-        }
-        try {
-            DisplayMode targetDisplayMode = null;
-
-            if (fullscreen) {
-                DisplayMode[] modes = Display.getAvailableDisplayModes();
-                int freq = 0;
-                for (int i = 0; i < modes.length; i++) {
-                    DisplayMode current = modes[i];
-
-                    if ((current.getWidth() == width) && (current.getHeight() == height)) {
-                        if ((targetDisplayMode == null) || (current.getFrequency() >= freq)) {
-                            if ((targetDisplayMode == null) || (current.getBitsPerPixel() > targetDisplayMode.getBitsPerPixel())) {
-                                targetDisplayMode = current;
-                                freq = targetDisplayMode.getFrequency();
-                            }
-                        }
-
-                        if ((current.getBitsPerPixel() == Display.getDesktopDisplayMode().getBitsPerPixel()) &&
-                                (current.getFrequency() == Display.getDesktopDisplayMode().getFrequency())) {
-                            targetDisplayMode = current;
-                            break;
-                        }
-                    }
-                }
-            } else {
-                targetDisplayMode = new DisplayMode(width, height);
-            }
-            if (targetDisplayMode == null) {
-                System.out.println("Failed to find value mode: " + width + "x" + height + " fs=" + fullscreen);
-                return;
-            }
-            Display.setDisplayMode(targetDisplayMode);
-            Display.setFullscreen(fullscreen);
-        } catch (LWJGLException e) {
-            System.out.println("Unable to setup mode " + width + "x" + height + " fullscreen=" + fullscreen + e);
-        }
-    }
 
     @Override
     public void stopRender() {
-        render.running = false;
+        renderer.destroy = false;
     }
 
     @Override
@@ -151,7 +198,12 @@ public class ForceXApp implements SystemDevice {
 
     @Override
     public void destroy() {
-        render.destroy = true;
+        renderer.destroy = true;
+    }
+
+    @Override
+    public void setCursorState(boolean show) {
+        glfwSetInputMode(window, GLFW_CURSOR, show ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
     }
 
     @Override

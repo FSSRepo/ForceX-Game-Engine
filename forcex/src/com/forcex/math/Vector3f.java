@@ -203,12 +203,20 @@ public class Vector3f {
     }
 
     /* this operation to multiply right,up,direction vector*/
-    public Vector3f multLocal(final Matrix4f mat) {
+    public Vector3f multLocal(Matrix4f mat) {
         final float[] l_mat = mat.data;
         return this.set(
                 x * l_mat[Matrix4f.M00] + y * l_mat[Matrix4f.M01] + z * l_mat[Matrix4f.M02],
                 x * l_mat[Matrix4f.M10] + y * l_mat[Matrix4f.M11] + z * l_mat[Matrix4f.M12],
                 x * l_mat[Matrix4f.M20] + y * l_mat[Matrix4f.M21] + z * l_mat[Matrix4f.M22]);
+    }
+
+    public Vector3f multLocal(Matrix3f mat) {
+        final float[] l_mat = mat.data;
+        return this.set(
+                x * l_mat[Matrix3f.M00] + y * l_mat[Matrix3f.M01] + z * l_mat[Matrix3f.M02],
+                x * l_mat[Matrix3f.M10] + y * l_mat[Matrix3f.M11] + z * l_mat[Matrix3f.M12],
+                x * l_mat[Matrix3f.M20] + y * l_mat[Matrix3f.M21] + z * l_mat[Matrix3f.M22]);
     }
 
     public Vector3f project(final Matrix4f mat) {
@@ -288,6 +296,10 @@ public class Vector3f {
         return this;
     }
 
+    public Vector3f swapYZ() {
+        return new Vector3f(x, z, y);
+    }
+
     public Vector3f subLocal(float amount) {
         x -= amount;
         y -= amount;
@@ -318,17 +330,19 @@ public class Vector3f {
         return new Vector3f(tx, ty, tz);
     }
 
-    public void rotateOnSphereOrigin(float radius, float angleX, float angleY, boolean XY) {
+    public Vector3f rotateOnSphereOrigin(float radius, float angleX, float angleY, boolean upZ) {
         float u = angleX * toRadians, v = angleY * toRadians;
         x = radius * sin(u) * cos(v);
-        y = !XY ? (radius * sin(v)) : (radius * cos(u) * cos(v));
-        z = XY ? (radius * sin(v)) : (radius * cos(u) * cos(v));
+        y = !upZ ? (radius * sin(v)) : (radius * cos(u) * cos(v));
+        z = upZ ? (radius * sin(v)) : (radius * cos(u) * cos(v));
+        return this;
     }
 
-    public Vector3f toRotation() {
-        float rotx = Maths.atan2(y, sqrt((x * x) + (z * z))) * toDegrees;
-        float roty = -Maths.atan2(x, z) * toDegrees;
-        return new Vector3f(rotx, roty, 0);
+    public Vector2f toRotation(boolean upZ) {
+        Vector2f angles = new Vector2f();
+        angles.x = Maths.atan2(x, upZ ? y : z) * toDegrees;
+        angles.y = Maths.atan2(upZ ? z : y, sqrt((x * x) + (upZ ? y * y : z * z))) * toDegrees;
+        return angles;
     }
 
     /* rotate this vector */
@@ -380,7 +394,7 @@ public class Vector3f {
         return (x == 0 && y == 0 && z == 0);
     }
 
-    public Vector3f medio(Vector3f p2) {
+    public Vector3f medium(Vector3f p2) {
         return add(p2).mult(0.5f);
     }
 

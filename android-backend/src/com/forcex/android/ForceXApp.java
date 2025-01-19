@@ -23,34 +23,29 @@ import com.forcex.app.EventType;
 import com.forcex.app.Game;
 import com.forcex.app.InputListener;
 import com.forcex.core.SystemDevice;
-import com.forcex.utils.Logger;
-import com.forcex.utils.SHA1Checksum;
+import com.forcex.io.FileSystem;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 
 public class ForceXApp extends Activity implements SystemDevice {
-    private SystemDevice.OnAndroidFileStream file_system_listener;
     ArrayList<InputListener> inputs;
     AndroidInput input_processor;
-    private final ArrayList<String> default_folders = new ArrayList<>();
+    private SystemDevice.OnAndroidFileStream file_system_listener;
     private GLRenderer renderer;
     private Game game;
 
     private String getFileName(Uri uri) {
         String result = null;
         if (uri.getScheme().equals("content")) {
-            Cursor cursor = getContentResolver().query(uri, null, null, null, null);
-            try {
+            try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
                 if (cursor != null && cursor.moveToFirst()) {
-                    result = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
+                    int col_idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                    if (col_idx >= 0) {
+                        result = cursor.getString(col_idx);
+                    }
                 }
-            } finally {
-                cursor.close();
             }
         }
         if (result == null) {
@@ -63,18 +58,12 @@ public class ForceXApp extends Activity implements SystemDevice {
         return result;
     }
 
-    public void addFolder(String folder) {
-        default_folders.add(folder);
-    }
 
     public void initialize(Game game, boolean fullScreen) {
         if (fullScreen) {
             requestWindowFeature(Window.FEATURE_NO_TITLE);
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         }
-        default_folders.add("gui");
-        default_folders.add("fonts");
-        default_folders.add("shaders");
         this.game = game;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             if (permissionsAllowed()) {
@@ -118,12 +107,14 @@ public class ForceXApp extends Activity implements SystemDevice {
                 try {
                     file_system_listener.open(getContentResolver().openInputStream(data.getData()), getFileName(data.getData()));
                 } catch (FileNotFoundException e) {
+                    e.printStackTrace();
                 }
                 break;
             case 431:
                 try {
                     file_system_listener.save(getContentResolver().openOutputStream(data.getData()));
                 } catch (FileNotFoundException e) {
+                    e.printStackTrace();
                 }
                 break;
         }
@@ -175,6 +166,11 @@ public class ForceXApp extends Activity implements SystemDevice {
     }
 
     @Override
+    public void setCursorState(boolean show) {
+
+    }
+
+    @Override
     public void showInfo(final String info, final boolean isError) {
         runOnUiThread(() -> dialog(info, isError));
     }
@@ -195,10 +191,19 @@ public class ForceXApp extends Activity implements SystemDevice {
     }
 
     private void start() {
-        FX.homeDirectory = getExternalFilesDir(null).getAbsolutePath() + "/";
-        createEnvironmentFiles();
+        FX.fs = new FileSystem() {
+            @Override
+            protected InputStream getAndroidAsset(String name) {
+                try {
+                    return getAssets().open(name);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                return null;
+            }
+        };
+        FileSystem.homeDirectory = getExternalFilesDir(null).getAbsolutePath() + "/";
         inputs = new ArrayList<>();
-        mkNomedia();
         input_processor = new AndroidInput(this);
         renderer = new GLRenderer(game, input_processor);
         GLSurfaceView glView = new GLSurfaceView(this);
@@ -247,9 +252,9 @@ public class ForceXApp extends Activity implements SystemDevice {
 
     @Override
     public void onBackPressed() {
-		if (renderer.onBackPressed() == EventType.REQUEST_EXIT) {
-			destroy();
-		}
+        if (renderer.onBackPressed() == EventType.REQUEST_EXIT) {
+            destroy();
+        }
     }
 
     public boolean permissionsAllowed() {
@@ -259,64 +264,8 @@ public class ForceXApp extends Activity implements SystemDevice {
         return true;
     }
 
-    public void mkDirs() {
-        File dir = new File(FX.homeDirectory);
-        if (!dir.exists()) {
-            dir.mkdir();
-        }
-        for (String folder : default_folders) {
-            File mk = new File(dir.getAbsolutePath() + "/" + folder);
-            if (!mk.exists()) {
-                mk.mkdir();
-            }
-        }
-    }
-
-    public void mkNomedia() {
-        File dir = new File(FX.homeDirectory + ".nomedia");
-        if (!dir.exists()) {
-            try {
-                if (dir.createNewFile()) {
-                    System.out.println("No media created");
-                }
-            } catch (Exception e) {
-            }
-        }
-    }
-
-    private void createEnvironmentFiles() {
-        mkDirs();
-        extractAssets();
-    }
-
     @Override
     public boolean isJDKDesktop() {
         return false;
-    }
-
-    public void extractAssets() {
-        try {
-            for (String folder : default_folders) {
-                String[] files = getAssets().list(folder);
-                for (String file : files) {
-                    if (new File(FX.homeDirectory + folder + "/" + file).exists()) {
-                        String sha1 = SHA1Checksum.getSHA1(getAssets().open(folder + "/" + file));
-                        if (sha1.equals(SHA1Checksum.getSHA1(new FileInputStream(FX.homeDirectory + folder + "/" + file)))) {
-                            continue;
-                        }
-                    }
-                    InputStream is = getAssets().open(folder + "/" + file);
-                    FileOutputStream os = new FileOutputStream(FX.homeDirectory + folder + "/" + file);
-                    byte[] data = new byte[is.available()];
-                    is.read(data);
-                    os.write(data);
-                    is.close();
-                    os.close();
-
-                }
-            }
-        } catch (Exception e) {
-            Logger.log(e);
-        }
     }
 }

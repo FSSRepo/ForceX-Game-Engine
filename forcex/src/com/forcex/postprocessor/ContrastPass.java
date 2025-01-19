@@ -12,14 +12,14 @@ public class ContrastPass extends Pass{
 		shader = new ShaderProgram();
 		shader. createProgram(
 			Utils.vdefault,
-			(FX.gpu.isOpenGLES()?"precision mediump float;\n":"")+
+			(FX.gpu.isOpenGLES() ? "precision mediump float;\n" : "")+
 			"varying vec2 texcoords;\n"+
 			"uniform sampler2D texture;\n"+
 			"uniform float value;"+
 			"void main(){\n"+
 			"	vec3 color = texture2D(texture,texcoords).rgb;\n"+
 			"	gl_FragColor = vec4(color * (color * value),1.0);\n"+
-			"}"
+			"}", ""
 		);
 		shader. attrib_position = shader.getAttribLocation("positions");
 		value = shader.getUniformLocation("value");

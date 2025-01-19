@@ -25,7 +25,7 @@ public class ImageProcessing {
             curX = 0;
             curY += 256;
         }
-        out_img.save(out);
+        out_img.save(out, false);
     }
 
     public static void mixImage(String src, String add, String out, int pixel_x, int pixel_y) {
@@ -45,6 +45,6 @@ public class ImageProcessing {
             offsetY = pixel_y;
             offsetX += img_add.width;
         }
-        img_src.save(out);
+        img_src.save(out, false);
     }
 }

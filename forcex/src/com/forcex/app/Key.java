@@ -58,8 +58,8 @@ public class Key
 	public static final byte KEY_DOT = 48;
 	public static final byte KEY_MINUS = 49;
 
-	public static final byte KEY_R_SHIFT = 50;
-	public static final byte KEY_L_SHIFT = 51;
+	public static final byte KEY_RIGHT_SHIFT = 50;
+	public static final byte KEY_LEFT_SHIFT = 51;
 	
 	public static char toKeyChar(byte key,boolean capital_letter){
 		switch(key){

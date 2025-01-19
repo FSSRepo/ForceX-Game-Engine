@@ -6,8 +6,7 @@ import com.forcex.math.Vector3f;
 
 public class GameUtils {
     public static Vector2f getTouchNormalized(float x, float y) {
-        float ny = (2 * (y / FX.gpu.getHeight()) - 1) * (FX.gpu.isOpenGLES() ? -1 : 1);
-        return new Vector2f(2 * (x / FX.gpu.getWidth()) - 1, ny);
+        return new Vector2f(2 * (x / FX.gpu.getWidth()) - 1, -(2 * (y / FX.gpu.getHeight()) - 1));
     }
 
     public static boolean testRect(float x, float y, Vector2f position, float width, float height) {
@@ -49,5 +48,10 @@ public class GameUtils {
                 (dir.x * dist) + center.x,
                 (dir.y * dist) + center.y,
                 (dir.z * dist) + center.z);
+    }
+
+    public static String trimString(String str) {
+        int null_str = str.indexOf(0);
+        return null_str > 0 ? str.substring(0, null_str) : str;
     }
 }

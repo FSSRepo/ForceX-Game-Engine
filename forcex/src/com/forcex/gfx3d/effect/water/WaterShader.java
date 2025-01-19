@@ -21,8 +21,8 @@ public class WaterShader extends ShaderProgram{
 			prefix += "#define reflectionFlag\n";
 		}
 		createProgram(
-			prefix + FileUtils.readStringText(FX.homeDirectory+"shaders/water.vs"),
-			prefix + FileUtils.readStringText(FX.homeDirectory+"shaders/water.fs"));
+				"shaders/water.vs",
+				"shaders/water.fs", prefix);
 		attrib_position = getAttribLocation("vertexs");
 		if(ligthing){
 			pvm = getUniformLocation("projView");

@@ -15,7 +15,7 @@ android {
     buildToolsVersion '34.0.0'
 
     defaultConfig {
-        applicationId "com.steward.prototype"
+        applicationId "com.fss.rpg"
         minSdkVersion 21
         targetSdkVersion 33
         versionCode 1

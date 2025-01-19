@@ -1,9 +1,7 @@
 package com.forcex.gfx3d.shader;
 
-import com.forcex.FX;
 import com.forcex.gfx3d.Camera;
 import com.forcex.gfx3d.effect.Light;
-import com.forcex.io.FileUtils;
 import com.forcex.math.Matrix3f;
 import com.forcex.math.Matrix4f;
 import com.forcex.math.Vector2f;
@@ -79,9 +77,9 @@ public class DefaultShader extends ShaderProgram {
         setVector2(u_shadowSize, new Vector2f(1.0f / size));
     }
 
-    public void setModelMatrix(Matrix4f modelmatrix) {
-        setMatrix3f(u_normalMatrix, modelmatrix.getUpperLeft(tmp).invert().transpose());
-        setMatrix4f(u_ModelMatrix, modelmatrix);
+    public void setModelMatrix(Matrix4f modelMatrix) {
+        setMatrix3f(u_normalMatrix, modelMatrix.getUpperLeft(tmp).invert().transpose());
+        setMatrix4f(u_ModelMatrix, modelMatrix);
     }
 
     public void setMaterial(float ambient, float diffuse, float specular, float reflection, Color color) {
@@ -181,11 +179,11 @@ public class DefaultShader extends ShaderProgram {
     public void update(int flags) {
         if (this.flags != flags) {
             this.flags = flags;
-            String genPrefix = genPrefix();
-            if (program != -1) {
+            String prefix = genPrefix();
+            if (getProgram() != -1) {
                 cleanUp();
             }
-            createProgram(genPrefix + FileUtils.readStringText(FX.homeDirectory + "shaders/default.vs"), genPrefix + FileUtils.readStringText(FX.homeDirectory + "shaders/default.fs"));
+            createProgram("shaders/default.vs", "shaders/default.fs", prefix);
             bindAttributes();
             bindUniforms();
         }
@@ -205,8 +203,8 @@ public class DefaultShader extends ShaderProgram {
             attrib_color = getAttribLocation("aColor");
         }
         if (flag(ANIMATION_FLAG)) {
-            attrib_bonew = getAttribLocation("aBoneWeights");
-            attrib_bonei = getAttribLocation("aBoneIndices");
+            attrib_bone_wights = getAttribLocation("aBoneWeights");
+            attrib_bone_indices = getAttribLocation("aBoneIndices");
         }
     }
 

@@ -1,12 +1,11 @@
 package com.forcex.windows;
 
-import com.forcex.core.*;
 import com.forcex.utils.*;
 import java.nio.*;
 import org.lwjgl.opengl.*;
 import com.forcex.*;
 
-public class WindowsGL implements GL {
+public class WindowsGL implements com.forcex.core.GL {
 
     @Override
     public void glDisableVertexAttribArray(int indx) {
@@ -40,9 +39,7 @@ public class WindowsGL implements GL {
 
     @Override
     public int glGetInteger(int pname) {
-        IntBuffer buf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
-        GL11.glGetInteger(pname, buf);
-        return buf.get(0);
+        return GL11.glGetInteger(pname);
     }
 
     @Override
@@ -286,7 +283,7 @@ public class WindowsGL implements GL {
 
     @Override
     public int glGetShaderi(int shader, int pname) {
-        return GL20.glGetShader(shader, pname);
+        return GL20.glGetShaderi(shader, pname);
     }
 
     @Override
@@ -363,17 +360,17 @@ public class WindowsGL implements GL {
 
     @Override
     public void glUniformMatrix4f(int location, int count, float[] m) {
-        GL20.glUniformMatrix4(location,false,BufferUtils.createFloatBuffer(m));
+        GL20.glUniformMatrix4fv(location,false, BufferUtils.createFloatBuffer(m));
     }
 
     @Override
     public void glUniformMatrix3f(int location, int count, float[] m) {
-        GL20.glUniformMatrix3(location,false,BufferUtils.createFloatBuffer(m));
+        GL20.glUniformMatrix3fv(location,false, BufferUtils.createFloatBuffer(m));
     }
 
     @Override
     public void glUniformMatrix2f(int location, int count, float[] m) {
-		GL20.glUniformMatrix2(location,false,BufferUtils.createFloatBuffer(m));
+		GL20.glUniformMatrix2fv(location,false,BufferUtils.createFloatBuffer(m));
     }
 
 	@Override

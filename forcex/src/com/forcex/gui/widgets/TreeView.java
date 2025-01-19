@@ -7,8 +7,8 @@ import com.forcex.utils.GameUtils;
 
 public class TreeView extends View {
     private TreeAdapter adapter;
-    private Color background_color, interlined;
-    private OnTreeListener listener;
+    protected Color background_color, interlined;
+    protected OnTreeListener listener;
 
     public TreeView(float width, float height, TreeAdapter adapter) {
         setWidth(width);

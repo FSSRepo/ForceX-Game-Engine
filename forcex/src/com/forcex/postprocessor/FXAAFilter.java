@@ -1,6 +1,5 @@
 package com.forcex.postprocessor;
 import com.forcex.gfx3d.shader.*;
-import com.forcex.io.*;
 import com.forcex.*;
 import com.forcex.core.*;
 import com.forcex.math.*;
@@ -21,7 +20,7 @@ public class FXAAFilter extends Pass
 	}
 	
 	public void process(int texture){
-		if(renderfbo){
+		if(render_in_framebuffer){
 			fbo.begin();
 			render(texture);
 			fbo.end();

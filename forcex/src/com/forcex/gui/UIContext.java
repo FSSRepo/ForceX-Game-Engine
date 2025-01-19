@@ -27,7 +27,7 @@ public class UIContext {
     public UIContext() {
         drawer = new Drawer(new SpriteShader(true, false, true));
         aspectRatio = (float) FX.gpu.getWidth() / FX.gpu.getHeight();
-        default_font = new Font(FX.homeDirectory + "fonts/windows.fft");
+        default_font = new Font("fonts/windows.fft");
         Toast.create(this);
         view_priority = new View[8];
         dialogs = new Dialog[6];

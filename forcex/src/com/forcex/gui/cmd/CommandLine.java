@@ -3,14 +3,14 @@ package com.forcex.gui.cmd;
 import com.forcex.FX;
 import com.forcex.app.EventType;
 import com.forcex.app.threading.Task;
-import com.forcex.app.threading.ThreadTask;
+import com.forcex.app.threading.TaskPool;
 import com.forcex.gui.Drawer;
 import com.forcex.gui.UIContext;
 import com.forcex.gui.View;
 import com.forcex.gui.widgets.EditText;
 import com.forcex.gui.widgets.KeyBoard;
 import com.forcex.gui.widgets.TextView;
-import com.forcex.io.FileUtils;
+import com.forcex.io.FileSystem;
 import com.forcex.utils.Color;
 import com.forcex.utils.GameUtils;
 
@@ -32,7 +32,7 @@ public class CommandLine extends View implements EditText.onEditTextListener {
     String cmd_txt = "ForceX Console";
     EditText etInput;
     float text_size;
-    ThreadTask cmd_thread;
+    TaskPool cmd_thread;
     boolean running_cmd = false;
     boolean request_input = false;
     String name = "", response = "";
@@ -51,7 +51,7 @@ public class CommandLine extends View implements EditText.onEditTextListener {
         this.text_size = text_size;
         this.max_lines = max_lines;
         background = new Color(0, 0, 0);
-        cmd_thread = new ThreadTask();
+        cmd_thread = new TaskPool();
     }
 
     public void addCommand(String name, Command cmd) {
@@ -78,9 +78,9 @@ public class CommandLine extends View implements EditText.onEditTextListener {
                     String[] param = arg.split(" ");
                     String path = processPath(param[0]);
                     if (new File(current_path + "/" + path).exists()) {
-                        printf(FileUtils.readStringText(current_path + "/" + path), -1);
+                        //printf(FileUtils.readStringText(current_path + "/" + path), -1);
                     } else if (new File(path).exists()) {
-                        printf(FileUtils.readStringText(path), -1);
+                        //printf(FileUtils.readStringText(path), -1);
                     } else {
                         printf("File not exist", RED);
                     }
@@ -190,7 +190,7 @@ public class CommandLine extends View implements EditText.onEditTextListener {
         }
         filter += ")(?=\\b)";
         etInput.addFilter(0, 180, 210, filter);
-        paths.put("fxdir", FX.homeDirectory.substring(0, FX.homeDirectory.length() - 1));
+        paths.put("fxdir", FileSystem.homeDirectory.substring(0, FileSystem.homeDirectory.length() - 1));
         String[] pths = new String[paths.size()];
         offset = 0;
         for (String v : paths.keySet()) {

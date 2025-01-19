@@ -12,7 +12,7 @@ import com.forcex.utils.GameUtils;
 public class EditText extends View {
     int cursorCharLine = 0, cursorLine = 0;
     Color background;
-    byte frame = 0;
+    float cursor_fade = 0.0f;
     byte cursor_style = 1;
     Vector2f cursor = new Vector2f();
     private boolean using = false,
@@ -191,7 +191,7 @@ public class EditText extends View {
                             (num_lines - 1) * textview.getTextSize());
             textview.setTextColor(text_color.r, text_color.g, text_color.b);
             textview.onDraw(drawer);
-            if (frame < 30 && using) {
+            if (cursor_fade < 0.5f && using) {
                 if (cursor_style == 1) {
                     cursor.set((local.x - extent.x) + getXCursor() * 2f, dy - (cursorLine * textview.getTextSize() * 2f));
                     drawer.setTransform(90.0f, 1, textview.getTextSize());
@@ -203,10 +203,10 @@ public class EditText extends View {
                     FX.gl.glLineWidth(3f);
                     drawer.renderLine(cursor, textview.getTextColor());
                 }
-            } else if (frame >= 60) {
-                frame = 0;
+            } else if (cursor_fade > 1.0f) {
+                cursor_fade = 0.0f;
             }
-            frame++;
+            cursor_fade += FX.gpu.getDeltaTime();
         }
         FX.gl.glLineWidth(1.5f);
         if (useEdge) {
@@ -250,14 +250,14 @@ public class EditText extends View {
             for (short i = 0; i < text.length(); i++) {
                 char test = text.charAt(i);
                 if (test != '\n') {
-                    width += textview.getFont().charWidths[test & 0xff] * 0.5f * textview.getTextSize();
+                    width += textview.getFont().char_widths[test & 0xff] * 0.5f * textview.getTextSize();
                     if (width < getWidth()) {
                         process += test;
                         current_char++;
                     } else if (line_offset < lines_max) {
                         process += "\n" + test;
                         current_char++;
-                        width = textview.getFont().charWidths[test & 0xff] * 0.5f * textview.getTextSize();
+                        width = textview.getFont().char_widths[test & 0xff] * 0.5f * textview.getTextSize();
                         if (setting && current_char == cursorCharLine && current_line == cursorLine) {
                             cursorLine++;
                             cursorCharLine = 1;
