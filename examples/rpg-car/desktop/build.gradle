@@ -9,7 +9,7 @@ java.targetCompatibility = JavaVersion.VERSION_1_8
 sourceSets.main.java.srcDirs = ["src/"]
 
 shadowJar {
-    archiveName = 'rpg-car.jar'
+    archiveBaseName = 'rpg-car.jar'
 
     manifest {
         attributes 'Main-Class': 'com.fss.rpg.DesktopLauncher'

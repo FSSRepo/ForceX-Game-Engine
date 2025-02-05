@@ -117,6 +117,17 @@ if "%android%"=="TRUE" (
     )
     
     if "%dist%" == "TRUE" (
+        if not exist "forcex\build\libs\forcex.jar" (
+            echo forcex.jar not found. creating with compiled files
+            :: Crea la carpeta si no existe
+            if not exist "forcex\build\libs" mkdir "forcex\build\libs"
+            :: Crea el JAR con los archivos compilados
+            jar cvf "forcex\build\libs\forcex.jar" -C "forcex\build\classes" .
+            if %ERRORLEVEL% neq 0 (
+                echo Error creating forcex.jar
+                exit /b 1
+            )
+        )
         copy /V "forcex\build\libs\forcex.jar" "dist\windows\libs" 2>nul
         copy /V "windows-backend\build\libs\forcex-windows-backend.jar" "dist\windows\libs" 2>nul
         gradlew windows-backend:copyAssets

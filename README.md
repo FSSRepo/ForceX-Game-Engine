@@ -44,7 +44,7 @@ build --android --dist
 If ANDROID_NDK environment variable doesn't exist you must provide the path to ndk `path/to/ndk/version`:
 
 ```bash
-build --ndk-path C:/android-sdk/ndk/26.2.11394342 --android
+build --ndk-path C:/AndroidSDK/ndk/26.2.11394342 --android
 ```
 
 To reconfigure cmake:
