@@ -47,7 +47,7 @@ public class Player {
     int turning_animation_status = -1;
 
     public Player(ModelObject player_obj, DFFSDK dff) {
-        player_transform.setLocation(93, 7, -60);
+        player_transform.setLocation(23, 3, 19);
 
         character = plGenCharacter();
 

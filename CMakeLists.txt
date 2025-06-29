@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.4.1)
 
-project(AppTest)
+project(ForceXLibrary)
 
 option(FX_OAL           OFF)
 

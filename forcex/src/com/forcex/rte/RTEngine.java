@@ -115,7 +115,7 @@ public class RTEngine {
 		reflect_ray.direction = hit.ray.direction.sub(hit.normal.mult(2 * hit.ray.direction.dot(hit.normal)));
 		reflect_ray.origin = hit.position.add(reflect_ray.direction.mult(0.001f)); 
 		RTHit reflectionHit = recursionLimit > 0 ? scene.raycast(reflect_ray) : null;
-		RTPixel reflection = null;
+		RTPixel reflection;
 		if (reflectionHit != null) {
 			reflection = processHit(reflectionHit, recursionLimit - 1);
 		} else {

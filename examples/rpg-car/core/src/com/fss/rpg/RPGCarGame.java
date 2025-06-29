@@ -70,11 +70,12 @@ public class RPGCarGame extends Game implements InputListener {
         for(int i = 0; i < key_controls.length;i ++) {
             key_controls[i] = false;
         }
+
         // Interface
         ctx = new UIContext();
         Layout main = new Layout(ctx);
         ctx.bindKeyBoard(0.7f);
-        tvTitle = new TextView(new Font("fonts/cascadia.fft"));
+        tvTitle = new TextView(UIContext.default_font);
         tvTitle.setTextSize(0.04f);
         tvTitle.setTextAlignment(TextView.TEXT_ALIGNMENT_CENTER_LEFT);
         main.add(tvTitle);
@@ -115,11 +116,11 @@ public class RPGCarGame extends Game implements InputListener {
                 0.0f, new Matrix4f(), new Box(200, 1f, 200));
 
         floor.setShadowMapCullfaceEnabled(true);
-        floor.getMesh().getPart(0).material.diffuseTexture = Texture.load("terrain.png");
+        floor.getMesh().getPart(0).material.diffuseTexture = Texture.load("terrain.jpg");
 
 
         Box root_box = new Box(0.5f, 0.5f, 0.5f);
-        root_box.getPart(0).material.diffuseTexture = Texture.load("C:\\Users\\stewa\\Pictures\\leonardo watch\\abcc3152b1bea208419002e5a50d0ef8.jpg");
+        root_box.getPart(0).material.diffuseTexture = Texture.load("texture.png");
         root_box.initialize();
 
         for(int i = 0; i < 5;i ++) {
@@ -134,30 +135,39 @@ public class RPGCarGame extends Game implements InputListener {
         }
 
         {
-            Mesh test = readFx3d();
-            PhysicObject prueba = new PhysicObject(CollisionShape.createMeshShape(test.getVertexData().vertices, test.getPart(0).index), 0f,
-                    Matrix4f.fromTransform(new Quaternion(), new Vector3f(30, 4, 15)), test);
-            physics_objects.add(prueba);
-        }
-
-        {
-            FX3DModel test = readFx3d_v2().get(0);
+            FX3DModel test = readFX3D("piece.fx3d").get(0);
             test.mesh.initialize();
             PhysicObject prueba = new PhysicObject(CollisionShape.createMeshShape(test.mesh.getVertexData().vertices, test.mesh.getPart(0).index), 0f,
-                    Matrix4f.fromTransform(new Quaternion(), new Vector3f(0, 6, 0)), test.mesh);
+                    Matrix4f.fromTransform(new Quaternion(), new Vector3f(30, 2, 20)), test.mesh);
+//            ModelObject prueba = new ModelObject(test.mesh);
+//            test.mesh.getPart(0).material.color.set(255,0,0);
+//            prueba.setPosition(new Vector3f(30, 4, 15));
             physics_objects.add(prueba);
         }
+//
+//        {
+//            FX3DModel test = readFX3D("road.fx3d").get(0);
+//            test.mesh.initialize();
+//            PhysicObject prueba = new PhysicObject(CollisionShape.createMeshShape(test.mesh.getVertexData().vertices, test.mesh.getPart(0).index), 0f,
+//                    Matrix4f.fromTransform(new Quaternion(), new Vector3f(0, 6, 0)), test.mesh);
+//            physics_objects.add(prueba);
+//        }
 
         {
 
-            DFFSDK dff = DFFStream.readDFF("alucard.dff", null, null, null);
+            DFFSDK dff = DFFStream.readDFF("rubyhoshino.dff", null, null, null);
             ModelObject obj = dff.getObject(new ModelObject(), 0, false);
             static_objects.add(obj);
 
             {
                 Mesh mesh = obj.getMesh();
                 for(MeshPart part : mesh.getParts().list) {
-                    part.material.diffuseTexture = Texture.load("alucard/" + part.material.textureName + ".png");
+                    String texture_path = "rubyhoshino/" + part.material.textureName + ".png";
+                    if(new File(texture_path).exists()) {
+                        part.material.diffuseTexture = Texture.load("rubyhoshino/" + part.material.textureName + ".png");
+                    } else {
+                        System.out.println("Texture not found: " + texture_path);
+                    }
                 }
             }
             player = new Player(obj, dff);
@@ -166,20 +176,24 @@ public class RPGCarGame extends Game implements InputListener {
         physics_objects.add(floor);
 
         {
-            DFFSDK dff = DFFStream.readDFF("supergt.dff", null, null, null);
+            DFFSDK dff = DFFStream.readDFF("admiral.dff", null, null, null);
             Mesh wheel = null;
-
+            System.out.println(dff.geometryCount);
             for(int i = 0; i < dff.geometryCount; i++) {
                 ModelObject o = dff.getObject(new ModelObject(), i, false);
                 o.setID(i);
                 if(o.getName().contains("_vlo")) {
                     o.setVisible(false);
                 }
+
                 {
                     Mesh mesh = o.getMesh();
                     for (MeshPart part : mesh.getParts().list) {
-                        if(new File("audi/" + part.material.textureName + ".png").exists()) {
-                            part.material.diffuseTexture = Texture.load("audi/" + part.material.textureName + ".png");
+                        String texture_path = "corolla/" + part.material.textureName + ".png";
+                        if(new File(texture_path).exists()) {
+                            part.material.diffuseTexture = Texture.load("corolla/" + part.material.textureName + ".png");
+                        } else {
+                            System.out.println("Texture not found: " + texture_path);
                         }
                     }
                     if (wheel == null && o.getName().equals("wheel")) {
@@ -191,7 +205,7 @@ public class RPGCarGame extends Game implements InputListener {
                 }
             }
 
-            vehicle_nodes = new Node("Audi");
+            vehicle_nodes = new Node("Corolla");
             framesToNodes(dff.getFrameRoot(), vehicle_nodes);
             linkToObjects(vehicle_nodes);
 
@@ -231,24 +245,6 @@ public class RPGCarGame extends Game implements InputListener {
         }
     }
 
-    private Mesh readFx3d() {
-        BinaryStreamReader is = FX.fs.open("terrain.fx3d", FileSystem.ReaderType.STREAM);
-        System.out.println("Header: "+ is.readString(4));
-        System.out.println("Name: "+ is.readString(10));
-        boolean hasNormals = is.readInt() == 1;
-        int num_vertices = is.readInt();
-        System.out.println("Vertices: "+ num_vertices/3);
-        Mesh mesh = new Mesh(true);
-        mesh.setVertices(is.readFloatArray(num_vertices));
-        if(hasNormals) {
-            mesh.setNormals(is.readFloatArray(num_vertices));
-        }
-        int num_indices = is.readInt();
-        System.out.println("Triangles: "+ num_indices/3);
-        mesh.addPart(new MeshPart(is.readShortArray(num_indices)));
-        return mesh;
-    }
-
     public class FX3DModel {
         public Mesh mesh;
         public String name;
@@ -257,8 +253,8 @@ public class RPGCarGame extends Game implements InputListener {
         public Quaternion rotation;
     }
 
-    private ArrayList<FX3DModel> readFx3d_v2() {
-        BinaryStreamReader is = FX.fs.open("road.fx3d", FileSystem.ReaderType.STREAM);
+    private ArrayList<FX3DModel> readFX3D(String file) {
+        BinaryStreamReader is = FX.fs.open(file, FileSystem.ReaderType.STREAM);
         System.out.println("Header: "+ is.readString(4));
         int num_objects = is.readInt();
         ArrayList<FX3DModel> models = new ArrayList<>();
@@ -276,7 +272,6 @@ public class RPGCarGame extends Game implements InputListener {
            }
 
            int vertex_count = is.readInt();
-
            System.out.println("Vertex Count: "+ vertex_count);
            Mesh mesh = new Mesh(true);
            mesh.setVertices(is.readFloatArray(vertex_count * 3));
@@ -288,6 +283,7 @@ public class RPGCarGame extends Game implements InputListener {
            }
            int num_splits = is.readInt();
            if(num_splits == 0) {
+               System.out.println("No hay splits");
                return models;
            }
            System.out.println("splits: " + num_splits);

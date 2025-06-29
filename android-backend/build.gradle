@@ -1,5 +1,6 @@
 android {
-    compileSdkVersion 34
+    compileSdk 34
+    namespace "com.forcex"
 
     sourceSets {
         main {
@@ -12,10 +13,10 @@ android {
             jniLibs.srcDirs = ['libs']
         }
     }
-	
+
     defaultConfig {
         minSdkVersion 21
-        targetSdkVersion 34
+        targetSdk 34
         versionCode 1
         versionName "1.0"
     }

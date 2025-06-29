@@ -8,6 +8,6 @@ public class MainActivity extends ForceXApp
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        initialize(new RPGCarGame(),true);
+        initialize(new RPGCarGame(), true);
     }
 }

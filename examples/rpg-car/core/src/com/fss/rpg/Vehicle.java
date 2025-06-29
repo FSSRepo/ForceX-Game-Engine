@@ -91,7 +91,7 @@ public class Vehicle {
 
     public Vehicle(Node vehicle_nodes, Mesh wheel) {
         Matrix4f root = new Matrix4f();
-        root.setLocation(116, 8, -54);
+        root.setLocation(30, 2.5f, 25);
         {
             float chassis_extent_x = 1f;
             float chassis_extent_z = 2f;
@@ -240,9 +240,9 @@ public class Vehicle {
         for (int i = 0; i < 4; i++) {
             plGetWheelfv(i, PL_WHEEL_TRANSFORM_INTERPOLATION, tmp.data, 16);
             if(i == 0 || i == 2) {
-                wheels.get(i).setTransform(tmp);
-            } else {
                 wheels.get(i).setTransform(tmp.multLocal(wheel_flip));
+            } else {
+                wheels.get(i).setTransform(tmp);
             }
             renderer.render(wheels.get(i));
         }

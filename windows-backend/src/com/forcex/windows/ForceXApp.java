@@ -43,7 +43,7 @@ public class ForceXApp implements SystemDevice {
                 return null;
             }
         };
-        FileSystem.homeDirectory = config.resources_dir.length() == 0 ? "data/" : config.resources_dir;
+        FileSystem.homeDirectory = config.resources_dir.isEmpty() ? "data/" : config.resources_dir;
         GLFWErrorCallback.createPrint(System.err).set();
 
         // Initialize GLFW. Most GLFW functions will not work before doing this.
