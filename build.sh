@@ -33,7 +33,7 @@ if [[ "$android" == "TRUE" ]]; then
     if [[ -n "$ANDROID_NDK" ]]; then
         ndkpath="$ANDROID_NDK"
     elif [[ -z "$ndkpath" ]]; then
-        echo "Error: ANDROID_NDK environment variable not detected, please specify it as an argument"
+        echo "Error: ANDROID_NDK environment variable not detected, please specify it as an argument --ndk-path"
         exit 1
     fi
 
@@ -41,7 +41,7 @@ if [[ "$android" == "TRUE" ]]; then
     echo "Ninja Generator Path: $ninjapath"
 
     mkdir -p android-backend/libs
-    platform=${platform:-android-21}
+    platform=${platform:-android-35}
     oal=${oal:-off}
     echo "Android Platform Target: $platform"
 

@@ -18,14 +18,14 @@ android {
         }
     }
 
-    compileSdk 34
+    compileSdk 35
     buildToolsVersion '36.0.0-rc4'
     namespace "com.fss.rpg"
 
     defaultConfig {
         applicationId "com.fss.rpg"
-        minSdkVersion 21
-        targetSdk 34
+        minSdk 21
+        targetSdk 35
         versionCode 1
         versionName "1.0"
     }

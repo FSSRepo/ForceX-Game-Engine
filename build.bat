@@ -28,7 +28,7 @@ if "%android%"=="TRUE" (
         set "ndkpath=%ANDROID_NDK%"
     ) else (
         if "%ndkpath%"=="" (
-            echo Error: ANDROID_NDK environment variable not detected, please specify it as argument
+            echo Error: ANDROID_NDK environment variable not detected, please specify it as argument --ndk-path
             exit /b
         )
     )
@@ -41,7 +41,7 @@ if "%android%"=="TRUE" (
     )
 
     if "%platform%"=="" (
-        set platform=android-21
+        set platform=android-35
     )
 
     if "%oal%"=="" (

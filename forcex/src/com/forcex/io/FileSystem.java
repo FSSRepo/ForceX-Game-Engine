@@ -4,6 +4,7 @@ import com.forcex.FX;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -62,35 +63,37 @@ public abstract class FileSystem {
         return null;
     }
 
-    private InputStream tryOpenFile(String file_name) {
-        InputStream is = null;
+    private InputStream tryOpenFile(String filePath) {
         try {
-            if(FX.device.isJDKDesktop()) {
-                is = FileSystem.class.getClassLoader().getResourceAsStream(file_name);
-                if(is == null) {
-                    File file = new File(homeDirectory + file_name);
-                    if(file.exists()) {
-                        is = new FileInputStream(file);
-                    } else {
-                        file = new File(file_name);
-                        if(file.exists()) {
-                            is = new FileInputStream(file);
-                        }
-                    }
-                }
+            if (FX.device.isJDKDesktop()) {
+                InputStream is = tryLoadFromResources(filePath);
+                if (is != null) return is;
+
+                return tryLoadFromFileSystem(filePath);
             } else {
-                is = getAndroidAsset(file_name);
-                if(is == null) {
-                    File file = new File(homeDirectory + file_name);
-                    if(file.exists()) {
-                        is = new FileInputStream(homeDirectory + file);
-                    }
-                }
+                InputStream is = getAndroidAsset(filePath);
+                if (is != null) return is;
+
+                return tryLoadFromFileSystem(filePath);
             }
         } catch (Exception e) {
             e.printStackTrace();
+            return null;
         }
-        return is;
+    }
+
+    private InputStream tryLoadFromResources(String path) {
+        return FileSystem.class.getClassLoader().getResourceAsStream(path);
+    }
+
+    private InputStream tryLoadFromFileSystem(String path) throws FileNotFoundException {
+        File file = new File(path);
+        if (file.exists()) return new FileInputStream(file);
+
+        file = new File(homeDirectory + path);
+        if (file.exists()) return new FileInputStream(file);
+
+        return null;
     }
 
     protected abstract InputStream getAndroidAsset(String name);
