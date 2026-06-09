@@ -177,7 +177,7 @@ public class ForceXApp extends Activity implements SystemDevice {
 
     @Override
     public void stopRender() {
-        runOnUiThread(() -> stop());
+        runOnUiThread(this::stop);
     }
 
     @Override
@@ -198,8 +198,8 @@ public class ForceXApp extends Activity implements SystemDevice {
                     return getAssets().open(name);
                 } catch (Exception e) {
                     e.printStackTrace();
+                    return null;
                 }
-                return null;
             }
         };
         FileSystem.homeDirectory = getExternalFilesDir(null).getAbsolutePath() + "/";

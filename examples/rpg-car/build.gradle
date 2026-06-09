@@ -34,6 +34,7 @@ project(":examples:rpg-car:core") {
     dependencies {
         implementation files('libs/libopenpl.jar')
         implementation project(":forcex")
+        implementation project(":extensions:gtasdk")
     }
 }
 

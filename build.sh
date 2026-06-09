@@ -1,7 +1,6 @@
 #!/bin/bash
 
 android=FALSE
-dist=FALSE
 ninjapath="$(dirname "$0")/ninja"
 reconfig=FALSE
 src=""
@@ -21,13 +20,12 @@ while [[ "$1" != "" ]]; do
                     ;;
         --android ) android=TRUE
                     ;;
-        --dist ) dist=TRUE
-                    ;;
     esac
     shift
 done
 
-mkdir -p build-natives\mkdir -p dist
+mkdir -p build-natives
+mkdir -p dist
 
 if [[ "$android" == "TRUE" ]]; then
     if [[ -n "$ANDROID_NDK" ]]; then
@@ -41,59 +39,60 @@ if [[ "$android" == "TRUE" ]]; then
     echo "Ninja Generator Path: $ninjapath"
 
     mkdir -p android-backend/libs
-    platform=${platform:-android-35}
+    platform=${platform:-latest}
     oal=${oal:-off}
     echo "Android Platform Target: $platform"
 
     abis=(armeabi-v7a arm64-v8a x86 x86_64)
 
-    if [[ "$dist" == "FALSE" ]]; then
-        for abi in "${abis[@]}"; do
-            echo "Android ABI path: build/build-$abi"
-            mkdir -p "build-natives/build-$abi"
-            mkdir -p "android-backend/libs/$abi"
+    for abi in "${abis[@]}"; do
+        echo "Android ABI path: build/build-$abi"
+        mkdir -p "build-natives/build-$abi"
+        mkdir -p "android-backend/libs/$abi"
 
-            if [[ ! -f "build-natives/build-$abi/build.ninja" ]] || [[ "$reconfig" == "TRUE" ]]; then
-                rm -rf "build-natives/build-$abi"
-                cmake -S . -B "build-natives/build-$abi" -DFX_OAL="$oal" \
-                    -DCMAKE_TOOLCHAIN_FILE="$ndkpath/build/cmake/android.toolchain.cmake" \
-                    -DANDROID_ABI="$abi" -DANDROID_NDK="$ndkpath" -DANDROID_PLATFORM="$platform" \
-                    -DCMAKE_MAKE_PROGRAM="$ninjapath" -GNinja
-            fi
+        if [[ ! -f "build-natives/build-$abi/build.ninja" ]] || [[ "$reconfig" == "TRUE" ]]; then
+            rm -rf "build-natives/build-$abi"
+            cmake -S . -B "build-natives/build-$abi" -DFX_OAL="$oal" \
+                -DCMAKE_TOOLCHAIN_FILE="$ndkpath/build/cmake/android.toolchain.cmake" \
+                -DANDROID_ABI="$abi" -DANDROID_NDK="$ndkpath" -DANDROID_PLATFORM="$platform" \
+                -DCMAKE_MAKE_PROGRAM="$ninjapath" -GNinja
+        fi
 
-            cmake --build "build-natives/build-$abi" --config Release
-            find "build-natives/build-$abi/bin" -name "*.so" -exec cp -v {} "android-backend/libs/$abi/" \;
-        done
-        ./gradlew android-backend:assembleRelease
-    else
-        mkdir -p dist/android
-        find android-backend/build/outputs -name "*.aar" -exec cp -v {} dist/android \;
-        cp -v forcex/build/libs/forcex.jar dist/android || true
-    fi
+        cmake --build "build-natives/build-$abi" --config Release
+        find "build-natives/build-$abi/bin" -name "*.so" -exec cp -v {} "android-backend/libs/$abi/" \;
+    done
+
+    ./gradlew android-backend:assembleRelease
+
+    echo "Packaging Android distribution..."
+    mkdir -p dist/android
+    find android-backend/build/outputs -name "*.aar" -exec cp -v {} dist/android \;
+    cp -v forcex/build/libs/forcex.jar dist/android || true
 else
     mkdir -p build-natives/windows dist/windows dist/windows/data dist/windows/libs
 
     if [[ ! -f "build-natives/windows/build.ninja" ]] || [[ "$reconfig" == "TRUE" ]]; then
         cmake -S . -B build-natives/windows
     fi
-    
-    if [[ "$dist" == "TRUE" ]]; then
-        if [[ ! -f "forcex/build/libs/forcex.jar" ]]; then
-            echo "forcex.jar not found. Creating with compiled files."
-            mkdir -p "forcex/build/libs"
-            jar cvf "forcex/build/libs/forcex.jar" -C "forcex/build/classes" .
-            if [[ $? -ne 0 ]]; then
-                echo "Error creating forcex.jar"
-                exit 1
-            fi
+
+    cmake --build build-natives/windows --config Release
+    cp -v build-natives/windows/Release/fxcore.dll dist/windows || true
+    find windows-backend/libs -name "*.jar" -exec cp -v {} dist/windows/libs \;
+
+    ./gradlew windows-backend:assemble
+
+    if [[ ! -f "forcex/build/libs/forcex.jar" ]]; then
+        echo "forcex.jar not found. Creating with compiled files."
+        mkdir -p "forcex/build/libs"
+        jar cvf "forcex/build/libs/forcex.jar" -C "forcex/build/classes" .
+        if [[ $? -ne 0 ]]; then
+            echo "Error creating forcex.jar"
+            exit 1
         fi
-        cp -v forcex/build/libs/forcex.jar dist/windows/libs || true
-        cp -v windows-backend/build/libs/forcex-windows-backend.jar dist/windows/libs || true
-        ./gradlew windows-backend:copyAssets
-    else
-        cmake --build build-natives/windows --config Release
-        cp -v build-natives/windows/Release/fxcore.dll dist/windows || true
-        find windows-backend/libs -name "*.jar" -exec cp -v {} dist/windows/libs \;
-        ./gradlew windows-backend:assemble
     fi
+
+    echo "Packaging Windows distribution..."
+    cp -v forcex/build/libs/forcex.jar dist/windows/libs || true
+    cp -v windows-backend/build/libs/forcex-windows-backend.jar dist/windows/libs || true
+    ./gradlew windows-backend:copyAssets
 fi

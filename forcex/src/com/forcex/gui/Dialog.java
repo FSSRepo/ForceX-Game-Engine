@@ -27,7 +27,7 @@ public class Dialog {
     private Vector2f position, position_end; // position_end used when playing animation
     private int icon_texture = -1;
     private TextView tvTitle;
-    private OnDimissListener dismiss_listener;
+    private OnDismissListener dismiss_listener;
     private boolean useLabel = true, useCloseButton = true, finishAnim = false;
     private float time = -1;
 
@@ -69,7 +69,7 @@ public class Dialog {
         time = -1;
     }
 
-    public void setOnDismissListener(OnDimissListener listener) {
+    public void setOnDismissListener(OnDismissListener listener) {
         this.dismiss_listener = listener;
     }
 
@@ -253,7 +253,7 @@ public class Dialog {
         return GameUtils.testRect(x, y, position.add(0, (useLabel ? label_height : 0.0f) + padding), layout.getExtentWidth() + padding, layout.getExtentHeight() + padding + (useLabel ? label_height : 0.0f));
     }
 
-    public interface OnDimissListener {
+    public interface OnDismissListener {
         boolean dismiss();
     }
 }

@@ -1,144 +1,304 @@
 @echo off
+setlocal EnableDelayedExpansion
+
+rem ============================================
+rem Default values
+rem ============================================
 set "android=FALSE"
-set "dist=FALSE"
-set ninjapath=%~dp0ninja
+set "clean=FALSE"
 set "reconfig=FALSE"
+set "help=FALSE"
+set "ninjapath=%~dp0ninja.exe"
+set "platform="
+set "oal="
 set "src="
 
+rem ============================================
+rem Argument parsing
+rem ============================================
 :GETOPS
- if /I "%~1" == "--ndk-path" set ndkpath=%2& shift
- if /I "%~1" == "--platform" set platform=%2& shift
- if /I "%~1" == "--oal" set oal=%2& shift
- if /I "%~1" == "--reconfig" set "reconfig=TRUE"
- if /I "%~1" == "--android" set "android=TRUE"
- if /I "%~1" == "--dist" set "dist=TRUE"
- shift
-if not (%1)==() goto GETOPS
+if "%~1"=="" goto :CHECK_ARGS
+if /I "%~1"=="--ndk-path" (
+    if "%~2"=="" (
+        echo Error: --ndk-path requires a value.
+        exit /b 1
+    )
+    set "ndkpath=%~2"
+    shift
+    goto :SHIFT_AND_NEXT
+)
+if /I "%~1"=="--platform" (
+    if "%~2"=="" (
+        echo Error: --platform requires a value.
+        exit /b 1
+    )
+    set "platform=%~2"
+    shift
+    goto :SHIFT_AND_NEXT
+)
+if /I "%~1"=="--oal" (
+    if "%~2"=="" (
+        echo Error: --oal requires a value.
+        exit /b 1
+    )
+    set "oal=%~2"
+    shift
+    goto :SHIFT_AND_NEXT
+)
+if /I "%~1"=="--reconfig" set "reconfig=TRUE"
+if /I "%~1"=="--android" set "android=TRUE"
+if /I "%~1"=="--clean" set "clean=TRUE"
+if /I "%~1"=="--help" set "help=TRUE"
+:SHIFT_AND_NEXT
+shift
+goto :GETOPS
 
-if not exist build-natives (
-    mkdir build-natives
+:CHECK_ARGS
+if "%help%"=="TRUE" goto :SHOW_HELP
+
+rem ============================================
+rem Validate dependencies
+rem ============================================
+where cmake >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+    echo Error: cmake not found in PATH.
+    exit /b 1
 )
 
-if not exist dist (
-    mkdir dist
+if not exist "%ninjapath%" (
+    echo Error: Ninja not found at "%ninjapath%".
+    exit /b 1
 )
 
-if "%android%"=="TRUE" (
-    if not "%ANDROID_NDK%"=="" (
-        set "ndkpath=%ANDROID_NDK%"
-    ) else (
-        if "%ndkpath%"=="" (
-            echo Error: ANDROID_NDK environment variable not detected, please specify it as argument --ndk-path
-            exit /b
+where jar >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+    echo Error: jar command not found in PATH. Ensure JDK is installed.
+    exit /b 1
+)
+
+rem ============================================
+rem Create base directories
+rem ============================================
+if not exist build-natives mkdir build-natives
+if not exist dist mkdir dist
+
+rem ============================================
+rem Clean mode
+rem ============================================
+if "%clean%"=="TRUE" (
+    echo Cleaning build artifacts...
+    if exist build-natives rmdir /s /q build-natives
+    if exist android-backend\libs rmdir /s /q android-backend\libs
+    if exist forcex\build\libs rmdir /s /q forcex\build\libs
+    if exist windows-backend\build\libs rmdir /s /q windows-backend\build\libs
+    echo Clean complete.
+    if "%reconfig%"=="FALSE" if "%android%"=="FALSE" exit /b 0
+)
+
+rem ============================================
+rem Android build
+rem ============================================
+if "%android%"=="TRUE" goto :BUILD_ANDROID
+
+rem ============================================
+rem Windows build (default)
+rem ============================================
+goto :BUILD_WINDOWS
+
+rem ============================================
+rem Help
+rem ============================================
+:SHOW_HELP
+echo Usage: build.bat [options]
+echo.
+echo Options:
+echo   --android              Build for Android
+echo   --ndk-path PATH        Android NDK path (or set ANDROID_NDK env var)
+echo   --platform API         Android platform target (default: latest)
+echo   --oal VALUE            OpenAL option (default: off)
+echo   --reconfig             Force reconfigure CMake
+echo   --clean                Clean build artifacts before building
+echo   --help                 Show this help message
+echo.
+echo Examples:
+echo   build.bat --android --ndk-path C:\Android\ndk --platform android-34
+echo   build.bat --clean --reconfig
+echo   build.bat
+exit /b 0
+
+rem ============================================
+rem Android build logic
+rem ============================================
+:BUILD_ANDROID
+if not "%ANDROID_NDK%"=="" (
+    set "ndkpath=%ANDROID_NDK%"
+)
+
+if "%ndkpath%"=="" (
+    echo Error: ANDROID_NDK environment variable not detected. Please specify --ndk-path.
+    exit /b 1
+)
+
+if not exist "%ndkpath%\build\cmake\android.toolchain.cmake" (
+    echo Error: Android NDK not found at "%ndkpath%".
+    exit /b 1
+)
+
+if "%platform%"=="" set "platform=latest"
+if "%oal%"=="" set "oal=off"
+
+set "abis=armeabi-v7a arm64-v8a x86 x86_64"
+
+echo ============================================
+echo Android Build Configuration
+echo ============================================
+echo NDK Path:      %ndkpath%
+echo Ninja Path:    %ninjapath%
+echo Platform:      %platform%
+echo OAL:           %oal%
+echo.
+
+if not exist android-backend\libs mkdir android-backend\libs
+
+for %%a in (%abis%) do (
+    echo ----------------------------------------
+    echo Building ABI: %%a
+    echo ----------------------------------------
+
+    set "build_dir=build-natives\build-%%a"
+    set "lib_dir=android-backend\libs\%%a"
+
+    if not exist "!build_dir!" mkdir "!build_dir!"
+    if not exist "!lib_dir!" mkdir "!lib_dir!"
+
+    if "%reconfig%"=="TRUE" (
+        if exist "!build_dir!" rmdir /s /q "!build_dir!"
+        mkdir "!build_dir!"
+    )
+
+    if not exist "!build_dir!\build.ninja" (
+        cmake -S . -B "!build_dir!" -DFX_OAL=%oal% -DCMAKE_TOOLCHAIN_FILE="%ndkpath%/build/cmake/android.toolchain.cmake" -DANDROID_ABI=%%a -DANDROID_NDK="%ndkpath%" -DANDROID_PLATFORM=%platform% -DCMAKE_MAKE_PROGRAM="%ninjapath%" -GNinja
+        if !ERRORLEVEL! neq 0 (
+            echo Error: CMake configuration failed for %%a.
+            exit /b 1
         )
     )
 
-    echo Android NDK Path: %ndkpath%
-    echo Ninja Generator Path: %ninjapath%
-    
-    if not exist android-backend\libs (
-        mkdir android-backend\libs
+    cmake --build "!build_dir!" --config Release
+    if !ERRORLEVEL! neq 0 (
+        echo Error: Build failed for %%a.
+        exit /b 1
     )
 
-    if "%platform%"=="" (
-        set platform=android-35
+    for /f "delims=" %%f in ('dir /a-d /b /s "!build_dir!\bin\*.so"') do (
+        copy /V "%%f" "!lib_dir!\" >nul 2>&1
     )
+)
 
-    if "%oal%"=="" (
-        set oal=off
-    )
+echo ============================================
+echo Running Gradle assembleRelease...
+echo ============================================
+gradlew.bat android-backend:assembleRelease
+if %ERRORLEVEL% neq 0 (
+    echo Error: Gradle build failed.
+    exit /b 1
+)
 
-    echo Android Platform Target: %platform%
+echo ============================================
+echo Packaging Android distribution...
+echo ============================================
+if not exist dist\android mkdir dist\android
 
-    set "abis=armeabi-v7a arm64-v8a x86 x86_64"
+for /f "delims=" %%f in ('dir /a-d /b /s "android-backend\build\outputs\*-release.aar"') do (
+    copy /V "%%f" "dist\android" >nul 2>&1
+)
 
-    if "%dist%" == "FALSE" (
-        for %%a in (%abis%) do (
-            echo Android ABI path: build\build-%%a
-            if not exist build-natives\build-%%a (
-                mkdir build-natives\build-%%a
-            )
-
-            if not exist android-backend\libs\%%a (
-                mkdir android-backend\libs\%%a
-            )
-
-            if not exist build-natives\build-%%a\build.ninja (
-                cmake -S . -B build-natives\build-%%a -DFX_OAL=%oal% -DCMAKE_TOOLCHAIN_FILE=%ndkpath%/build/cmake/android.toolchain.cmake -DANDROID_ABI=%%a -DANDROID_NDK=%ndkpath% -DANDROID_PLATFORM=%platform% -DCMAKE_MAKE_PROGRAM=%ninjapath% -GNinja
-            )
-
-            if "%reconfig%" == "TRUE" (
-                del /q /s build-natives\build-%%a
-                cmake -S . -B build-natives\build-%%a -DFX_OAL=%oal% -DCMAKE_TOOLCHAIN_FILE=%ndkpath%/build/cmake/android.toolchain.cmake -DANDROID_ABI=%%a -DANDROID_NDK=%ndkpath% -DANDROID_PLATFORM=%platform% -DCMAKE_MAKE_PROGRAM=%ninjapath% -GNinja
-            )
-
-            cmake --build build-natives\build-%%a --config Release
-
-            for /f "delims=" %%f in ('dir /a-d /b /s "build-natives\build-%%a\bin\*.so"') do (
-                copy /V "%%f" "android-backend\libs\%%a\" 2>nul
-            )
-        )
-
-        gradlew android-backend:assembleRelease
-    ) else (
-        if not exist dist\android (
-            mkdir dist\android
-        )
-
-        for /f "delims=" %%f in ('dir /a-d /b /s "android-backend\build\outputs\*.aar"') do (
-            copy /V "%%f" "dist\android" 2>nul
-        )
-
-        copy /V "forcex\build\libs\forcex.jar" "dist\android" 2>nul
-    )
+if exist "forcex\build\libs\forcex.jar" (
+    copy /V "forcex\build\libs\forcex.jar" "dist\android" >nul 2>&1
 ) else (
-    if not exist build-natives\windows (
-        mkdir build-natives\windows
-    )
+    echo Warning: forcex.jar not found. Skipping copy.
+)
+exit /b 0
 
-    if not exist dist\windows (
-        mkdir dist\windows
-    )
+rem ============================================
+rem Windows build logic
+rem ============================================
+:BUILD_WINDOWS
+if not exist build-natives\windows mkdir build-natives\windows
+if not exist dist\windows mkdir dist\windows
+if not exist dist\windows\data mkdir dist\windows\data
+if not exist dist\windows\libs mkdir dist\windows\libs
 
-    if not exist dist\windows\data (
-        mkdir dist\windows\data
-    )
+echo ============================================
+echo Windows Build Configuration
+echo ============================================
+echo.
 
-    if not exist dist\windows\libs (
-        mkdir dist\windows\libs
-    )
+if "%reconfig%"=="TRUE" (
+    if exist build-natives\windows rmdir /s /q build-natives\windows
+    mkdir build-natives\windows
+)
 
-    if not exist build-natives\windows\build.ninja (
-        cmake -S . -B build-natives\windows
-    )
-
-    if "%reconfig%" == "TRUE" (
-        cmake -S . -B build-natives\windows
-    )
-    
-    if "%dist%" == "TRUE" (
-        if not exist "forcex\build\libs\forcex.jar" (
-            echo forcex.jar not found. creating with compiled files
-            :: Crea la carpeta si no existe
-            if not exist "forcex\build\libs" mkdir "forcex\build\libs"
-            :: Crea el JAR con los archivos compilados
-            jar cvf "forcex\build\libs\forcex.jar" -C "forcex\build\classes" .
-            if %ERRORLEVEL% neq 0 (
-                echo Error creating forcex.jar
-                exit /b 1
-            )
-        )
-        copy /V "forcex\build\libs\forcex.jar" "dist\windows\libs" 2>nul
-        copy /V "windows-backend\build\libs\forcex-windows-backend.jar" "dist\windows\libs" 2>nul
-        gradlew windows-backend:copyAssets
-    ) else (
-        cmake --build build-natives\windows --config Release
-        copy build-natives\windows\Release\fxcore.dll dist\windows
-
-        for /f "delims=" %%f in ('dir /a-d /b /s "windows-backend\libs\*.jar"') do (
-            copy /V "%%f" "dist\windows\libs" 2>nul
-        )
-
-        gradlew windows-backend:assemble
+if not exist build-natives\windows\build.ninja (
+    cmake -S . -B build-natives\windows
+    if %ERRORLEVEL% neq 0 (
+        echo Error: CMake configuration failed.
+        exit /b 1
     )
 )
+
+cmake --build build-natives\windows --config Release
+if %ERRORLEVEL% neq 0 (
+    echo Error: Native build failed.
+    exit /b 1
+)
+
+copy build-natives\windows\Release\fxcore.dll dist\windows >nul 2>&1
+
+for /f "delims=" %%f in ('dir /a-d /b /s "windows-backend\libs\*.jar"') do (
+    copy /V "%%f" "dist\windows\libs" >nul 2>&1
+)
+
+echo ============================================
+echo Running Gradle assemble...
+echo ============================================
+gradlew.bat windows-backend:assemble
+if %ERRORLEVEL% neq 0 (
+    echo Error: Gradle build failed.
+    exit /b 1
+)
+
+echo ============================================
+echo Packaging Windows distribution...
+echo ============================================
+if not exist "forcex\build\libs\forcex.jar" (
+    echo forcex.jar not found. Creating from compiled classes...
+    if not exist "forcex\build\libs" mkdir "forcex\build\libs"
+    if not exist "forcex\build\classes" (
+        echo Error: Compiled classes not found at forcex\build\classes.
+        exit /b 1
+    )
+    jar cvf "forcex\build\libs\forcex.jar" -C "forcex\build\classes" .
+    if %ERRORLEVEL% neq 0 (
+        echo Error: Failed to create forcex.jar.
+        exit /b 1
+    )
+)
+
+copy /V "forcex\build\libs\forcex.jar" "dist\windows\libs" >nul 2>&1
+
+if exist "windows-backend\build\libs\forcex-windows-backend.jar" (
+    copy /V "windows-backend\build\libs\forcex-windows-backend.jar" "dist\windows\libs" >nul 2>&1
+) else (
+    echo Warning: forcex-windows-backend.jar not found. Skipping copy.
+)
+
+echo ============================================
+echo Running Gradle copyAssets...
+echo ============================================
+gradlew.bat windows-backend:copyAssets
+if %ERRORLEVEL% neq 0 (
+    echo Error: Gradle copyAssets failed.
+    exit /b 1
+)
+exit /b 0

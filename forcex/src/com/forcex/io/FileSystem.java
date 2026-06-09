@@ -96,5 +96,13 @@ public abstract class FileSystem {
         return null;
     }
 
+    public String readString(String path) {
+        BinaryStreamReader is = open(path, ReaderType.MEMORY);
+        if (is != null) {
+            return new String(is.getData());
+        }
+        return "";
+    }
+
     protected abstract InputStream getAndroidAsset(String name);
 }

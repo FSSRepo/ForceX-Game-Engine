@@ -20,18 +20,14 @@ public class Camera {
     float fov = 60, aspectRatio, near = 0.1f, far = 1000f;
     boolean update = true;
     Vector4f plane_ext;
-    boolean smooth_delta = false;
-    float deltaX = 0, deltaY = 0, touch_time = 0, timelapse = 0;
-    long start_touch = 0;
-    boolean delta_first = true;
-    float resistance = 1f;
     boolean use_up_z;
 
-    // orbit camera, no lock
-    public Vector3f relative_position = new Vector3f();
+    // orbit camera, stateless with inertia
     public Vector3f orbit_point = new Vector3f();
-    public float distance = 4, rot_x = 0, rot_y = 0;
-    public boolean orbit_cam = false;
+    private float orbitInertiaX = 0, orbitInertiaY = 0;
+    private boolean orbitDragging = false;
+    private float orbitDamping = 0.9f;
+    private static final float ORBIT_INERTIA_THRESHOLD = 0.001f;
 
     public enum ProjectionType {
         ORTHOGRAPHIC,
@@ -73,10 +69,6 @@ public class Camera {
         return position;
     }
 
-    public void setSmoothMovement(boolean z) {
-        smooth_delta = z;
-    }
-
     public void setPosition(float x, float y, float z) {
         position.set(x, y, z);
     }
@@ -112,7 +104,15 @@ public class Camera {
     public void rotate(float x, float y) {
         direction.rotY(y);
         up.rotY(y);
-        Vector3f side = up.cross(direction).normalize();
+        // Robust pitch axis: world-up cross direction, avoids gimbal lock.
+        Vector3f worldUp = use_up_z ? new Vector3f(0, 0, 1) : new Vector3f(0, 1, 0);
+        Vector3f side = worldUp.cross(direction);
+        float sideLen = side.length();
+        if (sideLen < 1e-3f) {
+            side.set(1, 0, 0);
+        } else {
+            side.multLocal(1f / sideLen);
+        }
         direction.multLocal(Matrix4f.setRotation(new Matrix4f(), x, side));
         up.set(direction).crossLocal(side);
         direction.normalize();
@@ -133,31 +133,17 @@ public class Camera {
             update = false;
         }
 
-        if(orbit_cam) {
-            position.set(calculateOrbit()).addLocal(orbit_point);
-            lookAt(orbit_point);
+        if (!orbitDragging && (Math.abs(orbitInertiaX) > ORBIT_INERTIA_THRESHOLD || Math.abs(orbitInertiaY) > ORBIT_INERTIA_THRESHOLD)) {
+            orbit(orbitInertiaX, orbitInertiaY);
+            orbitInertiaX *= orbitDamping;
+            orbitInertiaY *= orbitDamping;
+            if (Math.abs(orbitInertiaX) < ORBIT_INERTIA_THRESHOLD) {
+                orbitInertiaX = 0;
+            }
+            if (Math.abs(orbitInertiaY) < ORBIT_INERTIA_THRESHOLD) {
+                orbitInertiaY = 0;
+            }
         }
-
-//        if (smooth_delta && deltaX != 0 && deltaY != 0 && touch_time > 0) {
-//            if (delta_first) {
-//                touch_time = Math.min(touch_time, 1.4f);
-//                timelapse = Maths.abs(1.4f - touch_time);
-//                deltaX = Maths.clamp(deltaX, -30, 30);
-//                deltaY = Maths.clamp(deltaY, -30, 30);
-//                deltaX = deltaX * touch_time * resistance;
-//                deltaY = deltaY * touch_time * resistance;
-//                delta_first = false;
-//            }
-//            float nx = deltaX * timelapse;
-//            float ny = deltaY * timelapse;
-//            orbit(ny, nx);
-//            if (timelapse > 0) {
-//                timelapse -= FX.gpu.getDeltaTime();
-//            } else {
-//                deltaX = 0;
-//                deltaY = 0;
-//            }
-//        }
         projectMatrix.mult(ProjViewMatrix, viewMatrix.setlookAt(position, direction, up));
     }
 
@@ -200,35 +186,61 @@ public class Camera {
         return v.project(InversePV);
     }
 
-    public void setResistance(float r) {
-        resistance = r;
-    }
-
     public void setInputType(byte type) {
-        if (!smooth_delta) {
-            return;
-        }
         if (type == EventType.TOUCH_PRESSED) {
-            start_touch = System.currentTimeMillis();
-            deltaX = 0;
-            deltaY = 0;
-            touch_time = 0;
+            orbitDragging = true;
+            orbitInertiaX = 0;
+            orbitInertiaY = 0;
         } else if (type == EventType.TOUCH_DROPPED) {
-            touch_time = (System.currentTimeMillis() - start_touch) / 1000.0f;
-            delta_first = true;
+            orbitDragging = false;
         }
     }
 
-    public Vector3f calculateOrbit() {
-        return relative_position.rotateOnSphereOrigin(distance, rot_x, rot_y, false);
+    public void orbit(float x, float y) {
+        orbit(orbit_point, x, y);
     }
 
-    public void updateDelta(float x, float y) {
-        if (!smooth_delta) {
-            return;
+    public void orbit(Vector3f point, float x, float y) {
+        Vector3f offset = position.sub(point);
+        Vector3f worldUp = use_up_z ? new Vector3f(0, 0, 1) : new Vector3f(0, 1, 0);
+
+        // Yaw: rotate offset around world up axis.
+        if (Math.abs(y) > 1e-5f) {
+            Quaternion yaw = Quaternion.fromAxisAngle(worldUp, y);
+            offset.multLocal(yaw.toMatrix());
         }
-        deltaX += x;
-        deltaY += y;
+
+        // Pitch: rotate offset around local side axis (perpendicular to offset and world up).
+        // This avoids gimbal lock because each rotation is an incremental quaternion.
+        if (Math.abs(x) > 1e-5f) {
+            Vector3f side = worldUp.cross(offset);
+            float sideLen = side.length();
+            if (sideLen < 1e-3f) {
+                side.set(1, 0, 0);
+            } else {
+                side.multLocal(1f / sideLen);
+            }
+            Quaternion pitch = Quaternion.fromAxisAngle(side, x);
+            offset.multLocal(pitch.toMatrix());
+        }
+
+        position.set(point).addLocal(offset);
+        if (Float.isNaN(position.x) || Float.isNaN(position.y) || Float.isNaN(position.z)) {
+            position.set(point).addLocal(0, use_up_z ? 0 : 4, use_up_z ? 4 : 0);
+        }
+        lookAt(point);
+        if (orbitDragging) {
+            orbitInertiaX = x;
+            orbitInertiaY = y;
+        }
+    }
+
+    public void setOrbitDamping(float damping) {
+        orbitDamping = Math.max(0, Math.min(damping, 0.99f));
+    }
+
+    public float getOrbitDamping() {
+        return orbitDamping;
     }
 
     public void setUseZUp(boolean z) {

@@ -1,2 +1,11 @@
-include 'android-backend', 'forcex', 'windows-backend', 'examples:rpg-car', 'examples:rpg-car:android', 'examples:rpg-car:core', 'examples:rpg-car:desktop', 'examples:super-ai:core', 'examples:super-ai:desktop'
+include 'android-backend', 'forcex', 'windows-backend', 'extensions:gtasdk', 'examples:rpg-car', 'examples:rpg-car:android', 'examples:rpg-car:core', 'examples:rpg-car:desktop', 'examples:super-ai:core', 'examples:super-ai:desktop'
+include 'ChatOffline', 'EnglishWhisper', 'MapEditorCore', 'MapEditorFree', 'MapEditorPro', 'Zmodeler'
+
+project(':ChatOffline').projectDir = file('own/ChatOffline')
+project(':EnglishWhisper').projectDir = file('own/EnglishWhisper')
+project(':MapEditorCore').projectDir = file('own/MapEditorCore')
+project(':MapEditorFree').projectDir = file('own/MapEditorFree')
+project(':MapEditorPro').projectDir = file('own/MapEditorPro')
+project(':Zmodeler').projectDir = file('own/Zmodeler')
+
 rootProject.name = "forcex-engine"

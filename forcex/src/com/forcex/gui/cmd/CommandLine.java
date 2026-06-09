@@ -10,6 +10,7 @@ import com.forcex.gui.View;
 import com.forcex.gui.widgets.EditText;
 import com.forcex.gui.widgets.KeyBoard;
 import com.forcex.gui.widgets.TextView;
+import com.forcex.io.BinaryStreamReader;
 import com.forcex.io.FileSystem;
 import com.forcex.utils.Color;
 import com.forcex.utils.GameUtils;
@@ -78,9 +79,15 @@ public class CommandLine extends View implements EditText.onEditTextListener {
                     String[] param = arg.split(" ");
                     String path = processPath(param[0]);
                     if (new File(current_path + "/" + path).exists()) {
-                        //printf(FileUtils.readStringText(current_path + "/" + path), -1);
+                        BinaryStreamReader is = FX.fs.open(current_path + "/" + path, FileSystem.ReaderType.MEMORY);
+                        if (is != null) {
+                            printf(new String(is.getData()), -1);
+                        }
                     } else if (new File(path).exists()) {
-                        //printf(FileUtils.readStringText(path), -1);
+                        BinaryStreamReader is = FX.fs.open(path, FileSystem.ReaderType.MEMORY);
+                        if (is != null) {
+                            printf(new String(is.getData()), -1);
+                        }
                     } else {
                         printf("File not exist", RED);
                     }

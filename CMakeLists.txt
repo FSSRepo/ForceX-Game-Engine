@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.4.1)
+cmake_minimum_required(VERSION 3.5)
 
 project(ForceXLibrary)
 
@@ -12,6 +12,8 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Android")
         set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
         set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
         set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+        
+        add_link_options(-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384)
         if(FX_OAL)
                 message("ForceX Open AL Audio Engine enabled")
                 add_subdirectory(forcex/jni/oal)

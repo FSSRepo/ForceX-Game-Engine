@@ -40,6 +40,14 @@ project(":windows-backend") {
     }
 }
 
+project(":extensions:gtasdk") {
+    apply plugin: "java-library"
+
+    dependencies {
+        implementation project(":forcex")
+    }
+}
+
 task clean(type: Delete) {
     delete rootProject.buildDir
 }

@@ -10,3 +10,4 @@ build-natives
 android-backend/libs
 dist
 bin
+own

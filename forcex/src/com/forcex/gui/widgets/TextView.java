@@ -5,6 +5,7 @@ import com.forcex.core.GL;
 import com.forcex.core.gpu.Texture;
 import com.forcex.gui.Drawer;
 import com.forcex.gui.Font;
+import com.forcex.gui.UIContext;
 import com.forcex.gui.View;
 import com.forcex.math.Vector2f;
 import com.forcex.utils.Color;
@@ -34,6 +35,10 @@ public class TextView extends View {
     private boolean animationScroll;
 
 	private GL gl = FX.gl;
+
+    public TextView() {
+        this.font = UIContext.default_font;
+    }
 
     public TextView(Font font) {
         this.font = font;

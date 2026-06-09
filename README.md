@@ -1,119 +1,177 @@
-# ForceX-Game-Engine
-This powerful engine will be a great project. You will be able to create decent games for multiple platforms. 
+# ForceX Game Engine
 
-# Functions
+ForceX is a cross-platform 2D/3D game engine written in Java with native backends for **Windows** and **Android**. It provides a complete framework for game development with graphics, audio, collisions, animation, post-processing effects, and a full GUI system.
 
-Android 4.1 to up support.
+---
 
-Windows 7 to up support (32 bits, 64 bits).
+## Key Features
 
-# Requeriments and build
+- **Cross-platform**: Windows (7+, 32/64 bits) and Android (4.1+)
+- **3D Graphics**: OpenGL-based renderer with shaders, lighting, shadows, water, skybox, and billboards
+- **Post-processing**: Bloom, blur, brightness/contrast, FXAA, normal mapping, framebuffer effects
+- **Particle System**: 2D/3D particle engine
+- **Animation**: Skeleton-based animation with bones and keyframe tracks
+- **Full GUI**: Rich widgets (buttons, lists, editors, keyboards, joysticks, dialogs, toast, and more)
+- **Collision Detection**: Bounding boxes, spheres, meshes, and triangles
+- **Ray Tracing Engine**: RTEngine module for real-time ray tracing
+- **Audio**: OpenAL support (optional on Android) and WAV playback
+- **Asset Management**: Custom package formats, texture compression (DXT, ETC1)
+- **Networking**: HTTP download manager and property files
+- **Threading**: TaskPool system for background jobs
+- **3D Math**: Vectors, matrices, quaternions, planes, rays, and geometric utilities
+- **GTA Extension**: RenderWare DFF/IFP file support via `extensions/gtasdk`
 
-You need:
+---
 
-For desktop build (windows and linux):
+## Project Structure
 
-- CMake
-- JDK 8 or 11
+| Module | Description |
+|--------|-------------|
+| `forcex/` | Core engine library (Java) |
+| `forcex/jni/` | Native C++ code (texture compression, JNI bridge) |
+| `android-backend/` | Android platform backend (OpenGL ES, input, audio) |
+| `windows-backend/` | Windows platform backend (LWJGL, OpenGL) |
+| `extensions/gtasdk/` | SDK extension for GTA RenderWare files |
+| `examples/` | Sample projects (RPG Car, Super AI) |
 
-For android build:
+---
 
-- CMake
-- JDK 8 or 11
+## Requirements
+
+### Windows Build
+- CMake 3.5+
+- JDK 17
+- Ninja (included in the repository)
+
+### Android Build
+- CMake 3.5+
+- JDK 17
 - Android SDK and NDK
+- Ninja (included in the repository)
 
-## Build Desktop
+---
 
-To build this project just execute these commands:
+## Building
 
-```bash
-# desktop
-build
-build --dist
-```
+The build script automatically generates distribution artifacts in the `dist/` folder.
 
-## Build android
-
-If you have ANDROID_NDK defined:
+### Windows (Desktop)
 
 ```bash
-build --android
-build --android --dist
-```
+# Build everything (native + Java + distribution)
+build.bat
 
-If ANDROID_NDK environment variable doesn't exist you must provide the path to ndk `path/to/ndk/version`:
+# Clean and rebuild
+build.bat --clean
 
-```bash
-build --ndk-path C:/AndroidSDK/ndk/26.2.11394342 --android
-```
-
-To reconfigure cmake:
-
-```bash
-# you can add --android to reconfigure android cmake configs
-build --reconfig
-```
-
-For android, if you need to use OpenAL for audio, you need to build the native library:
-
-```bash
-# run this command once to enable this, after you can just use 'build --android'
-build --android --oal --reconfig
-build --android --dist
-```
-
-# Integration
-
-To integrate ForceX into your applications, you must have built the respective files.
-
-### Windows and Linux
-
-1. Copy the files from `dist/(windows|linux)/libs` to your libraries `.jar` directory of your app.
-
-2. After you build your application jar, you have to copy the native libraries and `data` directory from `dist/(windows|linux)` to your .jar directory, like this:
-
-```bash
-# windows
-outputs
-    data
-    app.jar
-    forcex.dll
-    lwjgl.dll
-
-# linux
-outputs
-    data
-    app.jar
-    libforcex.so
-    lwjgl.so
-```
-
-3. Import the libraries in your `build.gradle` in your dependencies block:
-
-```java
-dependencies {
-    implementation files('libs/forcex-windows-backend.jar', 'libs/forcex.jar', 'libs/jinput.jar', 'libs/lwjgl_util_applet.jar', 'libs/lwjgl_util.jar', 'libs/lwjgl.jar', 'libs/lzma.jar')
-}
+# Force CMake reconfiguration
+build.bat --reconfig
 ```
 
 ### Android
 
-1. Copy the files from `dist/android` to your libs directory of your app.
-
 ```bash
-app
-    src
-        main
-    libs
-        forcex.jar
-        android-backend-release.aar
-    build.gradle
+# If you have ANDROID_NDK set in your environment
+build.bat --android
+
+# Or explicitly specify the NDK path
+build.bat --android --ndk-path C:\AndroidSDK\ndk\26.2.11394342
+
+# Clean and rebuild for Android
+build.bat --clean --android
+
+# Enable OpenAL audio support (configure once)
+build.bat --android --oal on --reconfig
+build.bat --android
 ```
 
-2. Import the libraries in your `build.gradle` in your dependencies block:
+### Linux / macOS (via build.sh)
 
-```java
+```bash
+./build.sh
+./build.sh --android --ndk-path /path/to/ndk
+```
+
+---
+
+## Build Options
+
+| Option | Description |
+|--------|-------------|
+| `--android` | Build for Android instead of Windows |
+| `--ndk-path PATH` | Path to the Android NDK (or use the `ANDROID_NDK` environment variable) |
+| `--platform API` | Android platform target (default: `latest`) |
+| `--oal VALUE` | Enable OpenAL audio (`on`/`off`, default: `off`) |
+| `--reconfig` | Force CMake reconfiguration |
+| `--clean` | Clean build artifacts before building |
+| `--help` | Show help message |
+
+---
+
+## Integration
+
+After building, all distribution files are placed in `dist/`.
+
+### Windows Integration
+
+1. Copy the contents of `dist/windows/libs/` to your project's library folder.
+2. Copy `dist/windows/fxcore.dll` and the `dist/windows/data/` folder alongside your application's JAR.
+
+```
+your-app/
+├── app.jar
+├── fxcore.dll
+├── lwjgl.dll
+└── data/
+    ├── fonts/
+    ├── gui/
+    └── shaders/
+```
+
+3. Add the required JARs to your `build.gradle`:
+
+```groovy
+dependencies {
+    implementation files(
+        'libs/forcex-windows-backend.jar',
+        'libs/forcex.jar',
+        'libs/lwjgl.jar',
+        'libs/lwjgl-opengl.jar',
+        'libs/lwjgl-glfw.jar',
+        'libs/lwjgl-openal.jar',
+        'libs/lwjgl_util.jar'
+    )
+}
+```
+
+### Android Integration
+
+1. Copy the files from `dist/android/` to your app's `libs/` folder:
+
+```
+app/
+└── libs/
+    ├── forcex.jar
+    └── android-backend-release.aar
+```
+
+2. Add to your `build.gradle`:
+
+```groovy
 dependencies {
     implementation files('libs/android-backend-release.aar', 'libs/forcex.jar')
 }
 ```
+
+---
+
+## Examples
+
+The repository includes sample projects to help you get started:
+
+| Example | Description |
+|---------|-------------|
+| `examples/rpg-car` | RPG-style car game with physics |
+| `examples/super-ai` | AI simulation demo |
+
+Each example contains `core/`, `desktop/`, and `android/` submodules.

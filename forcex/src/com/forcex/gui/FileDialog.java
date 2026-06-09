@@ -92,17 +92,14 @@ public class FileDialog {
         lay.add(cancel);
         browse(new File(path), (short) -1);
         dialog = new Dialog(lay);
-        dialog.setOnDismissListener(new Dialog.OnDimissListener() {
-            @Override
-            public boolean dismiss() {
-                if (result != null && result.tryCancel(id)) {
-                    for (ExtIcon e : exticon) {
-                        Texture.remove(e.icon);
-                    }
-                    return true;
+        dialog.setOnDismissListener(() -> {
+            if (result != null && result.tryCancel(id)) {
+                for (ExtIcon e : exticon) {
+                    Texture.remove(e.icon);
                 }
-                return false;
+                return true;
             }
+            return false;
         });
         dialog.setIcon(Texture.load("gui/fd_icon.png"));
         dialog.setTitle(title);
