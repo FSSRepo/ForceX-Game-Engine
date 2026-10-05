@@ -3,7 +3,7 @@ apply plugin: "java"
 sourceSets.main.java.srcDirs = ["src"]
 
 jar {
-	archivesBaseName = 'forcex-windows-backend'
+	archivesBaseName = 'forcex-desktop-backend'
 }
 
 java {
@@ -13,5 +13,6 @@ java {
 
 task copyAssets(type: Copy) {
     from '../forcex/src/main/resources'
-    into '../dist/windows/data'
+    from '../extensions/gui/src/main/resources'
+    into '../dist/desktop/data'
 }

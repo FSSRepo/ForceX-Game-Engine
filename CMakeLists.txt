@@ -8,6 +8,10 @@ if(WIN32)
         set(INCLUDES_EXTRAS
                 $ENV{JAVA_HOME}/include
                 $ENV{JAVA_HOME}/include/win32)
+elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
+        set(INCLUDES_EXTRAS
+                $ENV{JAVA_HOME}/include
+                $ENV{JAVA_HOME}/include/linux)
 elseif(CMAKE_SYSTEM_NAME MATCHES "Android")
         set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
         set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

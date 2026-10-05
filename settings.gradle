@@ -1,4 +1,4 @@
-include 'android-backend', 'forcex', 'windows-backend', 'extensions:gtasdk', 'examples:rpg-car', 'examples:rpg-car:android', 'examples:rpg-car:core', 'examples:rpg-car:desktop', 'examples:super-ai:core', 'examples:super-ai:desktop'
+include 'android-backend', 'forcex', 'desktop-backend', 'extensions:gtasdk', 'extensions:gui', 'examples:rpg-car', 'examples:rpg-car:android', 'examples:rpg-car:core', 'examples:rpg-car:desktop'
 include 'ChatOffline', 'EnglishWhisper', 'MapEditorCore', 'MapEditorFree', 'MapEditorPro', 'Zmodeler'
 
 project(':ChatOffline').projectDir = file('own/ChatOffline')

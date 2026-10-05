@@ -31,7 +31,7 @@ project(":forcex") {
     apply plugin: "java-library"
 }
 
-project(":windows-backend") {
+project(":desktop-backend") {
     apply plugin: "java-library"
 
     dependencies {
@@ -41,6 +41,14 @@ project(":windows-backend") {
 }
 
 project(":extensions:gtasdk") {
+    apply plugin: "java-library"
+
+    dependencies {
+        implementation project(":forcex")
+    }
+}
+
+project(":extensions:gui") {
     apply plugin: "java-library"
 
     dependencies {

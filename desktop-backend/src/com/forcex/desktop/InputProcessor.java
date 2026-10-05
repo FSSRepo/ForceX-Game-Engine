@@ -1,4 +1,4 @@
-package com.forcex.windows;
+package com.forcex.desktop;
 
 import static org.lwjgl.glfw.GLFW.*;
 

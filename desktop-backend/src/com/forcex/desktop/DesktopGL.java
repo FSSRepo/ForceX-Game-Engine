@@ -1,11 +1,11 @@
-package com.forcex.windows;
+package com.forcex.desktop;
 
 import com.forcex.utils.*;
 import java.nio.*;
 import org.lwjgl.opengl.*;
 import com.forcex.*;
 
-public class WindowsGL implements com.forcex.core.GL {
+public class DesktopGL implements com.forcex.core.GL {
 
     @Override
     public void glDisableVertexAttribArray(int indx) {

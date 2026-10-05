@@ -1,4 +1,4 @@
-package com.forcex.windows;
+package com.forcex.desktop;
 
 import org.lwjgl.openal.*;
 import static org.lwjgl.openal.ALC10.*;
@@ -6,7 +6,7 @@ import static org.lwjgl.system.MemoryUtil.NULL;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
-public class WindowsSound implements com.forcex.core.ALC
+public class DesktopSound implements com.forcex.core.ALC
 {
 	private long context;
 	private long device;

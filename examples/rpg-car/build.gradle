@@ -35,6 +35,7 @@ project(":examples:rpg-car:core") {
         implementation files('libs/libopenpl.jar')
         implementation project(":forcex")
         implementation project(":extensions:gtasdk")
+        implementation project(":extensions:gui")
     }
 }
 
@@ -43,7 +44,7 @@ project(":examples:rpg-car:desktop") {
 
     dependencies {
         implementation project(":examples:rpg-car:core")
-        implementation project(":windows-backend")
+        implementation project(":desktop-backend")
         compileOnly project(":forcex")
     }
 }

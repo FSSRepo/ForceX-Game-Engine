@@ -1,9 +1,9 @@
-package com.forcex.windows;
+package com.forcex.desktop;
 import org.lwjgl.openal.*;
 import com.forcex.utils.*;
 import java.nio.*;
 
-public class WindowsAL implements com.forcex.core.AL
+public class DesktopAL implements com.forcex.core.AL
 {
 
 	@Override

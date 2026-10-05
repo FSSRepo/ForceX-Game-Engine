@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>windows-backend</name>
-	<comment>Project ForceX-Windows-Backend-lib created by Buildship.</comment>
+	<name>desktop-backend</name>
+	<comment>Project ForceX-Desktop-Backend-lib created by Buildship.</comment>
 	<projects>
 	</projects>
 	<buildSpec>

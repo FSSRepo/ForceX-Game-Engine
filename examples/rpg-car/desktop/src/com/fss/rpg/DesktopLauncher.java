@@ -1,7 +1,7 @@
 package com.fss.rpg;
 
-import com.forcex.windows.FXAppConfig;
-import com.forcex.windows.ForceXApp;
+import com.forcex.desktop.FXAppConfig;
+import com.forcex.desktop.ForceXApp;
 
 public class DesktopLauncher extends ForceXApp
 {

@@ -126,7 +126,7 @@
 	<classpathentry kind="lib" path="core/libs/libopenpl.jar"/>
 	<classpathentry kind="lib" path="desktop/build/libs/desktop.jar"/>
 	<classpathentry kind="lib" path="desktop/build/libs/prototype.jar"/>
-	<classpathentry kind="lib" path="desktop/libs/forcex-windows-backend.jar"/>
+	<classpathentry kind="lib" path="desktop/libs/forcex-desktop-backend.jar"/>
 	<classpathentry kind="lib" path="desktop/libs/jinput.jar"/>
 	<classpathentry kind="lib" path="desktop/libs/lwjgl_util_applet.jar"/>
 	<classpathentry kind="lib" path="desktop/libs/lwjgl_util.jar"/>

@@ -14,6 +14,30 @@ set "oal="
 set "src="
 
 rem ============================================
+rem Interactive mode when no arguments provided
+rem ============================================
+if "%~1"=="" (
+    echo === ForceX Engine - Interactive build ===
+    echo   1^) Desktop ^(Windows^) ^(default^)
+    echo   2^) Android
+    set /p "opt=Select target platform [1]: "
+    if "!opt!"=="2" set "android=TRUE"
+
+    set /p "rc=Force CMake reconfigure? [y/N]: "
+    if /I "!rc!"=="y" set "reconfig=TRUE"
+
+    if "!android!"=="TRUE" (
+        set /p "ndkpath=Android NDK path [%ANDROID_NDK%]: "
+        if "!ndkpath!"=="" set "ndkpath=%ANDROID_NDK%"
+        set /p "platform=Android platform [latest]: "
+        if "!platform!"=="" set "platform=latest"
+        set /p "oal=Enable OpenAL audio (--oal) [off]: "
+        if "!oal!"=="" set "oal=off"
+    )
+    echo ============================================
+)
+
+rem ============================================
 rem Argument parsing
 rem ============================================
 :GETOPS
@@ -90,7 +114,7 @@ if "%clean%"=="TRUE" (
     if exist build-natives rmdir /s /q build-natives
     if exist android-backend\libs rmdir /s /q android-backend\libs
     if exist forcex\build\libs rmdir /s /q forcex\build\libs
-    if exist windows-backend\build\libs rmdir /s /q windows-backend\build\libs
+    if exist desktop-backend\build\libs rmdir /s /q desktop-backend\build\libs
     echo Clean complete.
     if "%reconfig%"=="FALSE" if "%android%"=="FALSE" exit /b 0
 )
@@ -101,9 +125,9 @@ rem ============================================
 if "%android%"=="TRUE" goto :BUILD_ANDROID
 
 rem ============================================
-rem Windows build (default)
+rem Desktop (Windows) build (default)
 rem ============================================
-goto :BUILD_WINDOWS
+goto :BUILD_DESKTOP
 
 rem ============================================
 rem Help
@@ -221,16 +245,16 @@ if exist "forcex\build\libs\forcex.jar" (
 exit /b 0
 
 rem ============================================
-rem Windows build logic
+rem Desktop build logic
 rem ============================================
-:BUILD_WINDOWS
+:BUILD_DESKTOP
 if not exist build-natives\windows mkdir build-natives\windows
-if not exist dist\windows mkdir dist\windows
-if not exist dist\windows\data mkdir dist\windows\data
-if not exist dist\windows\libs mkdir dist\windows\libs
+if not exist dist\desktop mkdir dist\desktop
+if not exist dist\desktop\data mkdir dist\desktop\data
+if not exist dist\desktop\libs mkdir dist\desktop\libs
 
 echo ============================================
-echo Windows Build Configuration
+echo Desktop Build Configuration
 echo ============================================
 echo.
 
@@ -253,23 +277,23 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-copy build-natives\windows\Release\fxcore.dll dist\windows >nul 2>&1
+copy build-natives\windows\Release\fxcore.dll dist\desktop >nul 2>&1
 
-for /f "delims=" %%f in ('dir /a-d /b /s "windows-backend\libs\*.jar"') do (
-    copy /V "%%f" "dist\windows\libs" >nul 2>&1
+for /f "delims=" %%f in ('dir /a-d /b /s "desktop-backend\libs\*.jar"') do (
+    copy /V "%%f" "dist\desktop\libs" >nul 2>&1
 )
 
 echo ============================================
 echo Running Gradle assemble...
 echo ============================================
-gradlew.bat windows-backend:assemble
+gradlew.bat desktop-backend:assemble
 if %ERRORLEVEL% neq 0 (
     echo Error: Gradle build failed.
     exit /b 1
 )
 
 echo ============================================
-echo Packaging Windows distribution...
+echo Packaging Desktop distribution...
 echo ============================================
 if not exist "forcex\build\libs\forcex.jar" (
     echo forcex.jar not found. Creating from compiled classes...
@@ -285,18 +309,18 @@ if not exist "forcex\build\libs\forcex.jar" (
     )
 )
 
-copy /V "forcex\build\libs\forcex.jar" "dist\windows\libs" >nul 2>&1
+copy /V "forcex\build\libs\forcex.jar" "dist\desktop\libs" >nul 2>&1
 
-if exist "windows-backend\build\libs\forcex-windows-backend.jar" (
-    copy /V "windows-backend\build\libs\forcex-windows-backend.jar" "dist\windows\libs" >nul 2>&1
+if exist "desktop-backend\build\libs\forcex-desktop-backend.jar" (
+    copy /V "desktop-backend\build\libs\forcex-desktop-backend.jar" "dist\desktop\libs" >nul 2>&1
 ) else (
-    echo Warning: forcex-windows-backend.jar not found. Skipping copy.
+    echo Warning: forcex-desktop-backend.jar not found. Skipping copy.
 )
 
 echo ============================================
 echo Running Gradle copyAssets...
 echo ============================================
-gradlew.bat windows-backend:copyAssets
+gradlew.bat desktop-backend:copyAssets
 if %ERRORLEVEL% neq 0 (
     echo Error: Gradle copyAssets failed.
     exit /b 1

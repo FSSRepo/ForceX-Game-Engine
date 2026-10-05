@@ -30,7 +30,7 @@ ForceX is a cross-platform 2D/3D game engine written in Java with native backend
 | `forcex/` | Core engine library (Java) |
 | `forcex/jni/` | Native C++ code (texture compression, JNI bridge) |
 | `android-backend/` | Android platform backend (OpenGL ES, input, audio) |
-| `windows-backend/` | Windows platform backend (LWJGL, OpenGL) |
+| `desktop-backend/` | Desktop platform backend (LWJGL, OpenGL) |
 | `extensions/gtasdk/` | SDK extension for GTA RenderWare files |
 | `examples/` | Sample projects (RPG Car, Super AI) |
 
@@ -133,7 +133,7 @@ your-app/
 ```groovy
 dependencies {
     implementation files(
-        'libs/forcex-windows-backend.jar',
+        'libs/forcex-desktop-backend.jar',
         'libs/forcex.jar',
         'libs/lwjgl.jar',
         'libs/lwjgl-opengl.jar',

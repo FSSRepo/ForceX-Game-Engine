@@ -1,4 +1,4 @@
-package com.forcex.windows;
+package com.forcex.desktop;
 
 public class FXAppConfig {
     public int width = 1280;

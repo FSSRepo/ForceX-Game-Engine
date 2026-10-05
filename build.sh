@@ -24,6 +24,30 @@ while [[ "$1" != "" ]]; do
     shift
 done
 
+# Interactive mode when no CLI arguments are provided
+if [[ $# -eq 0 ]]; then
+    echo "=== ForceX Engine - Interactive build ==="
+    echo "  1) Linux (default)"
+    echo "  2) Android"
+    read -r -p "Select target platform [1]: " opt
+    if [[ "$opt" == "2" ]]; then
+        android=TRUE
+    fi
+    read -r -p "Force CMake reconfigure? [y/N]: " rc
+    if [[ "$rc" =~ ^[Yy]$ ]]; then
+        reconfig=TRUE
+    fi
+    if [[ "$android" == "TRUE" ]]; then
+        read -r -p "Android NDK path [${ANDROID_NDK:-not set}]: " ndk
+        ndkpath="${ndk:-$ANDROID_NDK}"
+        read -r -p "Android platform [latest]: " platform
+        platform="${platform:-latest}"
+        read -r -p "Enable OpenAL audio (--oal) [off]: " oal_in
+        oal="${oal_in:-off}"
+    fi
+    echo "=========================================="
+fi
+
 mkdir -p build-natives
 mkdir -p dist
 
@@ -69,17 +93,27 @@ if [[ "$android" == "TRUE" ]]; then
     find android-backend/build/outputs -name "*.aar" -exec cp -v {} dist/android \;
     cp -v forcex/build/libs/forcex.jar dist/android || true
 else
-    mkdir -p build-natives/windows dist/windows dist/windows/data dist/windows/libs
-
-    if [[ ! -f "build-natives/windows/build.ninja" ]] || [[ "$reconfig" == "TRUE" ]]; then
-        cmake -S . -B build-natives/windows
+    # Linux desktop build
+    if [[ -z "$JAVA_HOME" ]]; then
+        echo "Error: JAVA_HOME environment variable not detected"
+        exit 1
     fi
 
-    cmake --build build-natives/windows --config Release
-    cp -v build-natives/windows/Release/fxcore.dll dist/windows || true
-    find windows-backend/libs -name "*.jar" -exec cp -v {} dist/windows/libs \;
+    mkdir -p build-natives/linux dist/linux/data dist/linux/libs
 
-    ./gradlew windows-backend:assemble
+    if [[ ! -f "build-natives/linux/build.ninja" ]] || [[ "$reconfig" == "TRUE" ]]; then
+        cmake -S . -B build-natives/linux \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_FLAGS="-I$JAVA_HOME/include -I$JAVA_HOME/include/linux" \
+            -DCMAKE_MAKE_PROGRAM="$ninjapath" -GNinja
+    fi
+
+    cmake --build build-natives/linux --config Release
+    find build-natives/linux -name "*.so" -exec cp -v {} dist/linux \;
+
+    find desktop-backend/libs -name "*.jar" -exec cp -v {} dist/linux/libs \;
+
+    ./gradlew desktop-backend:assemble
 
     if [[ ! -f "forcex/build/libs/forcex.jar" ]]; then
         echo "forcex.jar not found. Creating with compiled files."
@@ -91,8 +125,8 @@ else
         fi
     fi
 
-    echo "Packaging Windows distribution..."
-    cp -v forcex/build/libs/forcex.jar dist/windows/libs || true
-    cp -v windows-backend/build/libs/forcex-windows-backend.jar dist/windows/libs || true
-    ./gradlew windows-backend:copyAssets
+    echo "Packaging Linux distribution..."
+    cp -v forcex/build/libs/forcex.jar dist/linux/libs || true
+    cp -v desktop-backend/build/libs/forcex-desktop-backend.jar dist/linux/libs || true
+    cp -rv forcex/src/main/resources/* dist/linux/data/ || true
 fi

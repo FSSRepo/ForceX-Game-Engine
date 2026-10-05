@@ -1,4 +1,4 @@
-package com.forcex.windows;
+package com.forcex.desktop;
 
 import com.forcex.FX;
 import com.forcex.app.EventType;
@@ -40,7 +40,7 @@ public class GLRenderer implements GPUDevice {
     void create() {
         org.lwjgl.opengl.GL.createCapabilities();
         if (FX.gl == null) {
-            FX.gl = new WindowsGL();
+            FX.gl = new DesktopGL();
         }
         GL gl = FX.gl;
 

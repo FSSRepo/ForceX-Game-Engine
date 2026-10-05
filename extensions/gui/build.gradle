@@ -1,0 +1,16 @@
+apply plugin: "java-library"
+
+sourceSets.main.java.srcDirs = ["src"]
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+dependencies {
+    implementation project(":forcex")
+}
+
+jar {
+    archivesBaseName = 'forcex-gui'
+}

@@ -1,4 +1,4 @@
-package com.forcex.windows;
+package com.forcex.desktop;
 
 import com.forcex.FX;
 import com.forcex.app.Game;
@@ -109,8 +109,8 @@ public class ForceXApp implements SystemDevice {
         renderer = new GLRenderer(game, this);
 
         FX.device = this;
-        FX.al = new WindowsAL();
-        FX.alc = new WindowsSound();
+        FX.al = new DesktopAL();
+        FX.alc = new DesktopSound();
         input_processor = new InputProcessor(this);
         input_processor.init();
 
