@@ -50,32 +50,16 @@ public class Player {
     private float camera_follow_weight = 0.0f;
     float distance = 14f;
 
-    // velocidades de desplazamiento
-    private static final float WALK_SPEED = 3f;
-    private static final float RUN_SPEED = 6.5f;
-
-    // aceleracion y frenado (unidades/s^2)
-    private static final float ACCELERATION = 14f;
-    private static final float DECELERATION = 20f;
-
-    // velocidad maxima de giro del personaje hacia la direccion deseada (grados/s)
+    // velocidad maxima de giro del personaje hacia la direccion deseada (grados/s) [NV: la de SA no esta verificada]
     private static final float TURN_SPEED = 480f;
 
-    // entrada (0..1) a partir de la cual se considera "a fondo" y se puede correr
-    private static final float RUN_INPUT_THRESHOLD = 0.7f;
-    // tiempo manteniendo la entrada a fondo para pasar de caminar a correr
-    private static final float RUN_HOLD_TIME = 0.35f;
+    // entrada de stick (0..1) con la que se camina solo hacia la puerta del coche: queda en estado "caminar"
+    private static final float APPROACH_STICK = 0.4f;
 
-    // velocidad de animacion base y limites al escalarla con la velocidad real
-    private static final float ANIM_BASE_SPEED = 0.8f;
-    private static final float ANIM_MIN_SCALE = 0.6f;
-    private static final float ANIM_MAX_SCALE = 1.3f;
-
-    boolean walking_animation = false, walking_start = false;
-    boolean run_animation = false, running = false;
-    boolean stopping = false;
-    float w_hold_time = 0.0f;
-    float current_speed = 0.0f;
+    // movimiento a pie: ratio, estado, animaciones y velocidad como GTA SA
+    final PedLocomotion loco = new PedLocomotion();
+    // sprint pedido por la interfaz tactil (en escritorio se usa shift)
+    boolean sprint_touch = false;
     // entrada analogica del joystick (x derecha, y adelante, -1..1); la fija el juego cada frame
     boolean joystick_active = false;
     float joy_x = 0.0f, joy_y = 0.0f;
@@ -88,13 +72,15 @@ public class Player {
     // el juego lo activa mientras se dispara: el personaje encara la camara
     boolean aiming = false;
 
-    Animation anim_walk, anim_walk_start, anim_idle, anim_run, anim_run_stop, anim_aim;
+    Animation anim_idle, anim_aim;
     private boolean aim_animation = false;
     // weapon.dat del AK47: "6 10 7" fotogramas a 30 fps = inicio y fin del bucle de disparo y fotograma del tiro
     private static final float AIM_LOOP_START = 6f / 30f;
     private static final float AIM_LOOP_END = 10f / 30f;
     private static final float AIM_FIRE_TIME = 7f / 30f;
     private float aim_prev_time = 0.0f;
+    // delta de mezcla al entrar y salir de la pose de apuntar [NV: valor propio, SA usa 0.25 en TaskUseGun]
+    private static final float AIM_BLEND = 8.0f;
     // true en el frame en que la animacion de apuntar llega al fotograma de disparo
     private boolean shot_event = false;
 
@@ -103,8 +89,10 @@ public class Player {
         return !aim_animation || shot_event;
     }
     private boolean armed = false;
-    private Animation armed_idle, armed_walk, armed_walk_start, armed_run;
-    private Animation unarmed_idle, unarmed_walk, unarmed_walk_start, unarmed_run;
+    private Animation armed_idle, armed_walk, armed_run;
+    private Animation unarmed_idle, unarmed_walk, unarmed_run;
+    // GTA SA usa la misma animacion de sprint con o sin arma
+    private Animation anim_sprint;
 
     /** Con arma equipada se usan las animaciones de sostenerla; al cambiar vuelve a idle. */
     public void setArmed(boolean value) {
@@ -113,18 +101,10 @@ public class Player {
         }
         armed = value;
         anim_idle = value ? armed_idle : unarmed_idle;
-        anim_walk = value ? armed_walk : unarmed_walk;
-        anim_walk_start = value ? armed_walk_start : unarmed_walk_start;
-        anim_run = value ? armed_run : unarmed_run;
-        walking_animation = false;
-        walking_start = false;
-        run_animation = false;
-        stopping = false;
+        loco.setAnimations(anim_idle, value ? armed_walk : unarmed_walk, value ? armed_run : unarmed_run, anim_sprint);
+        loco.reset();
         aim_animation = false;
-        animator.doAnimation(anim_idle, false);
-        animator.control.setLoop(true);
-        animator.control.speed = ANIM_BASE_SPEED;
-        animator.control.play();
+        loco.restart(animator);
     }
     Animation anim_car_open, anim_car_getin, anim_car_getout, anim_car_sit, anim_car_closedoor;
     // cerrando la puerta desde dentro tras subir (CTaskSimpleCarCloseDoorFromInside en GTA SA)
@@ -173,33 +153,26 @@ public class Player {
         for(int i = 0; i < ifp.animations.size();i ++) {
             System.out.println(i + " -> " + ifp.animations.get(i).name);
         }
-        anim_walk = ifp.getAnimation("WALK_player", true);
-        anim_walk_start = ifp.getAnimation("WALK_start", true);
-        anim_run = ifp.getAnimation("run_player", true);
-        anim_run_stop = ifp.getAnimation("Run_stop", true);
+        // animaciones de CPed::SetMoveAnim: idle, walk, run y sprint
         anim_idle = ifp.getAnimation("IDLE_stance", true);
+        unarmed_idle = anim_idle;
+        unarmed_walk = ifp.getAnimation("WALK_player", true);
+        unarmed_run = ifp.getAnimation("run_player", true);
+        anim_sprint = ifp.getAnimation("sprint_civi", true);
         // pose de fusil de GTA SA (el grupo "rifle" de weapon.dat para el AK47); vive en rifle.ifp de anim.img
         anim_aim = new IFPReader("game/rifle.ifp").getAnimation("RIFLE_fire", true);
         // juego de animaciones "armed": sostener un arma a un costado
         armed_idle = ifp.getAnimation("IDLE_armed", true);
         armed_walk = ifp.getAnimation("WALK_armed", true);
-        armed_walk_start = ifp.getAnimation("WALK_start_armed", true);
         armed_run = ifp.getAnimation("run_armed", true);
-        unarmed_idle = anim_idle;
-        unarmed_walk = anim_walk;
-        unarmed_walk_start = anim_walk_start;
-        unarmed_run = anim_run;
+        loco.setAnimations(unarmed_idle, unarmed_walk, unarmed_run, anim_sprint);
         anim_car_open =ifp.getAnimation("CAR_open_LHS", false);
         anim_car_getin = ifp.getAnimation("CAR_getin_LHS", false);
         anim_car_getout = ifp.getAnimation("CAR_getout_LHS", false);
         anim_car_sit = ifp.getAnimation("CAR_sit", true);
         anim_car_closedoor = ifp.getAnimation("CAR_closedoor_LHS", false);
 
-//        anim_idle = ifp.getAnimation("run_player", true);
-
-        animator.doAnimation(anim_idle, false);
-        animator.control.setLoop(true);
-        animator.control.speed = ANIM_BASE_SPEED;
+        loco.restart(animator);
     }
 
     private static SkeletonNode findNode(SkeletonNode node, String name) {
@@ -319,21 +292,13 @@ public class Player {
                 in_y /= magnitude;
                 magnitude = 1.0f;
             }
+            // al acercarse a la puerta se camina solo, a paso de caminata
+            float stick = approaching ? APPROACH_STICK : (has_input ? magnitude : 0.0f);
 
             // solo el avance hacia adelante hace que la camara se recoloque; de lado o hacia atras no
             camera_follow_weight = approaching ? 0.0f : Math.max(0.0f, in_y);
 
-            // mantener la entrada a fondo: primero camina y, tras RUN_HOLD_TIME, corre
-            if(magnitude >= RUN_INPUT_THRESHOLD) {
-                w_hold_time += delta;
-                running = w_hold_time >= RUN_HOLD_TIME;
-            } else {
-                w_hold_time = 0.0f;
-                running = false;
-            }
-
-            // direccion deseada relativa a la camara
-            float facing_dot = 1.0f;
+            // direccion deseada relativa a la camara (SA: rumbo del stick menos rumbo de la camara)
             if(has_input) {
                 float right_x = -camera_forward.z;
                 float right_z = camera_forward.x;
@@ -350,108 +315,28 @@ public class Player {
                 float max_turn = TURN_SPEED * delta;
                 player_direction.rotY(Math.max(-max_turn, Math.min(max_turn, angle)));
                 player_direction.normalize();
-                facing_dot = Math.max(0.0f, player_direction.x * des_x + player_direction.z * des_z);
 
                 player_transform.lookAt(player_direction, false);
                 plCharacterfv(PL_TRANSFORM, player_transform.data);
             }
 
-            // velocidad objetivo: proporcional a la entrada y reducida mientras el personaje aun esta girando
-            float target_speed = 0.0f;
-            if(has_input) {
-                target_speed = running ? RUN_SPEED : WALK_SPEED * Math.max(0.4f, Math.min(1.0f, magnitude / RUN_INPUT_THRESHOLD));
-                target_speed *= 0.15f + 0.85f * facing_dot;
-            }
-            if(target_speed > current_speed) {
-                current_speed = Math.min(target_speed, current_speed + ACCELERATION * delta);
-            } else {
-                current_speed = Math.max(target_speed, current_speed - DECELERATION * delta);
-            }
-            boolean moving = current_speed > 0.15f;
-            float move = current_speed * delta;
-
-            // animaciones, guiadas por la velocidad real (con histeresis entre caminar y correr)
-            boolean run_state = moving && current_speed > (run_animation ? WALK_SPEED * 1.15f : WALK_SPEED * 1.5f);
-            if(!moving) {
-                if(stopping) {
-                    // esperar a que termine la transicion de parada antes de volver a idle
-                    if(animator.finished()) {
-                        animator.doAnimation(anim_idle, false);
-                        animator.control.setLoop(true);
-                        animator.control.speed = ANIM_BASE_SPEED;
-                        animator.control.play();
-                        stopping = false;
-                    }
-                } else if(walking_animation || walking_start || run_animation) {
-                    // transicion de parada: reversa de WALK_start al caminar, Run_stop al correr
-                    animator.doAnimation(run_animation ? anim_run_stop : anim_walk_start, !run_animation);
-                    animator.control.setLoop(false);
-                    animator.control.speed = ANIM_BASE_SPEED;
-                    animator.control.play();
-                    walking_animation = false;
-                    walking_start = false;
-                    run_animation = false;
-                    stopping = true;
-                }
-            } else {
-                stopping = false;
-                if(run_state) {
-                    if(!run_animation) {
-                        // mantener la fase del ciclo al pasar de caminar a correr
-                        float phase = walking_animation ? animationPhase() : 0.0f;
-                        animator.doAnimation(anim_run, false);
-                        animator.control.time = phase * anim_run.getDuration();
-                        animator.control.setLoop(true);
-                        animator.control.play();
-                        run_animation = true;
-                        walking_animation = false;
-                        walking_start = false;
-                    }
-                } else if(run_animation) {
-                    // mantener la fase del ciclo al pasar de correr a caminar
-                    float phase = animationPhase();
-                    animator.doAnimation(anim_walk, false);
-                    animator.control.time = phase * anim_walk.getDuration();
-                    animator.control.setLoop(true);
-                    animator.control.play();
-                    run_animation = false;
-                    walking_animation = true;
-                } else if(!walking_animation) {
-                    if(!walking_start) {
-                        animator.doAnimation(anim_walk_start, false);
-                        animator.control.setLoop(false);
-                        animator.control.play();
-                        walking_start = true;
-                    } else if(animator.finished()) {
-                        animator.doAnimation(anim_walk, false);
-                        animator.control.setLoop(true);
-                        animator.control.play();
-                        walking_animation = true;
-                    }
-                }
-
-                // ritmo de pasos acorde a la velocidad real para evitar que los pies patinen
-                if(walking_animation || run_animation) {
-                    float reference = run_animation ? RUN_SPEED : WALK_SPEED;
-                    float scale = Math.max(ANIM_MIN_SCALE, Math.min(ANIM_MAX_SCALE, current_speed / reference));
-                    animator.control.speed = ANIM_BASE_SPEED * scale;
-                }
-            }
+            // quieto apuntando: la pose de fusil manda sobre las piernas
+            boolean aim_pose = aiming && !approaching && stick <= 0.0f;
+            boolean sprint_held = !approaching && (keys[Key.KEY_LEFT_SHIFT] || keys[Key.KEY_RIGHT_SHIFT] || sprint_touch);
+            float speed = loco.update(delta, animator, stick, sprint_held, !aim_pose);
+            float move = speed * delta;
 
             // pose de disparo mientras se apunta quieto; al soltar o moverse vuelve a idle / caminar
             shot_event = false;
-            if(aiming && !moving && !approaching && !stopping) {
+            if(aim_pose && !loco.isMoving()) {
                 if(!aim_animation) {
-                    animator.doAnimation(anim_aim, false);
+                    animator.blendTo(anim_aim, false, AIM_BLEND);
                     // como GTA SA: sube el fusil y luego repite solo el tramo de disparo del AK47 (weapon.dat)
                     animator.control.setLoop(false);
                     animator.control.speed = 1.0f;
                     animator.control.play();
                     aim_animation = true;
                     aim_prev_time = 0.0f;
-                    walking_animation = false;
-                    walking_start = false;
-                    run_animation = false;
                 } else {
                     if(animator.control.time >= AIM_LOOP_END) {
                         animator.control.time = AIM_LOOP_START;
@@ -463,10 +348,10 @@ public class Player {
                 }
             } else if(aim_animation) {
                 aim_animation = false;
-                if(!moving) {
-                    animator.doAnimation(anim_idle, false);
+                if(!loco.isMoving()) {
+                    animator.blendTo(anim_idle, false, AIM_BLEND);
                     animator.control.setLoop(true);
-                    animator.control.speed = ANIM_BASE_SPEED;
+                    animator.control.speed = 1.0f;
                     animator.control.play();
                 }
             }
@@ -482,7 +367,6 @@ public class Player {
                 player_transform.lookAt(player_direction, false);
                 plCharacterfv(PL_TRANSFORM, player_transform.data);
             }
-
             Vector3f walk = player_direction.mult(move);
             plCharacter3f(PL_CHAR_WALK_DIRECTION, walk.x, walk.y, walk.z);
             plBindCharacter(0);
@@ -493,7 +377,7 @@ public class Player {
     private void updateAutoFollow(float delta) {
         camera_idle += delta;
         rot_y = Math.max(CAMERA_MIN_PITCH, Math.min(CAMERA_MAX_PITCH, rot_y));
-        if(camera_idle < CAMERA_FOLLOW_DELAY || current_speed < 0.5f || camera_follow_weight <= 0.0f) {
+        if(camera_idle < CAMERA_FOLLOW_DELAY || loco.speed < 0.5f || camera_follow_weight <= 0.0f) {
             return;
         }
         // angulo orbital que deja a la camara exactamente detras de la direccion del personaje
@@ -524,10 +408,7 @@ public class Player {
     // al llegar a la puerta: se alinea exactamente y reproduce abrir puerta
     private void beginDoorSequence() {
         approaching = false;
-        current_speed = 0.0f;
-        running = false;
-        w_hold_time = 0.0f;
-        walking_animation = walking_start = run_animation = stopping = false;
+        loco.reset();
 
         player_direction.set(approach_facing);
         player_transform.setLocation(approach_target.x, approach_target.y, approach_target.z);
@@ -547,10 +428,7 @@ public class Player {
         closing_door = false;
         door_target = 1.0f;
 
-        current_speed = 0.0f;
-        running = false;
-        w_hold_time = 0.0f;
-        walking_animation = walking_start = run_animation = stopping = false;
+        loco.reset();
 
         player_direction.set(facing);
         player_transform.setLocation(door_position.x, door_position.y, door_position.z);
@@ -582,7 +460,7 @@ public class Player {
         exiting = false;
         animator.doAnimation(anim_idle, false);
         animator.control.setLoop(true);
-        animator.control.speed = ANIM_BASE_SPEED;
+        animator.control.speed = 1.0f;
         animator.control.play();
     }
 
@@ -625,7 +503,7 @@ public class Player {
         door_target = 0.0f;
         animator.doAnimation(anim_car_sit, false);
         animator.control.setLoop(true);
-        animator.control.speed = ANIM_BASE_SPEED;
+        animator.control.speed = 1.0f;
         animator.control.play();
     }
 
