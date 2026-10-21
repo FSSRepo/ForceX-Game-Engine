@@ -17,8 +17,9 @@ public class ProgressCircle extends View {
     float rotation = 0;
 
     public ProgressCircle(float radius, float radius_inner, int segments) {
-        setWidth(radius);
-        setHeight(radius);
+        // width/height es el tamaño completo; el radio indicado es el radio en píxeles.
+        setWidth(radius * 2f);
+        setHeight(radius * 2f);
         this.segments = (short) segments;
         index_count = (short) (segments * 6);
         background_color = new Color(225, 225, 225);

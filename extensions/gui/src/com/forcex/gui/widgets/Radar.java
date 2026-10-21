@@ -100,7 +100,7 @@ public class Radar extends View {
                 drawer.renderQuad(o.getRadarPosition(local, extent.x, extent.y, worldExtents.x, worldExtents.y), null, o.icon);
             }
             // render north
-            north_position.set(local.x, local.y + extent.y);
+            north_position.set(local.x, local.y - extent.y);
             drawer.setScale(extent.x * 0.08f, extent.y * 0.08f);
             drawer.renderQuad(north_position, null, north_point);
             // player icon
@@ -109,7 +109,7 @@ public class Radar extends View {
         } else {
             radius = extent.length();
             updateVbo();
-            drawer.scissorArea(local.x, local.y, extent.x, extent.y);
+            drawer.scissorArea(local.x - extent.x, local.y - extent.y, extent.x * 2f, extent.y * 2f);
             drawer.setScale(extent.x, extent.y);
             drawer.renderQuad(local, ocean, -1);
             drawer.setTransform(-angle, 1, 1);
@@ -161,12 +161,12 @@ public class Radar extends View {
         float north = (angle + 90.0f) * Maths.toRadians;
         float cx = radius * Maths.cos(north);
         float cy = radius * Maths.sin(north);
-        north_position.set(local.x + Maths.clamp(cx, -extent.x, extent.x), local.y + Maths.clamp(cy, -extent.y, extent.y));
+        north_position.set(local.x + Maths.clamp(cx, -extent.x, extent.x), local.y - Maths.clamp(cy, -extent.y, extent.y));
         return north_position;
     }
 
     private Vector2f getPlayerPosition() {
-        tmp.set(player_position).multLocal(extent.x, extent.y).addLocal(local);
+        tmp.set(player_position.x, -player_position.y).multLocal(extent.x, extent.y).addLocal(local);
         return tmp;
     }
 
@@ -175,7 +175,7 @@ public class Radar extends View {
         if (type == EventType.TOUCH_PRESSED) {
             Vector3f player = new Vector3f(
                     ((x - local.x) * worldExtents.x) / extent.x,
-                    ((y - local.y) * worldExtents.y) / extent.y,
+                    (-(y - local.y) * worldExtents.y) / extent.y,
                     10
             );
             if (listener != null) {
@@ -221,7 +221,7 @@ public class Radar extends View {
                 }
                 pos_radar.set(Maths.clamp(pos_world.x / wx, -1, 1), Maths.clamp(pos_world.y / wy, -1, 1));
             }
-            return pos_radar.mult(w, h).addLocal(pos);
+            return pos_radar.mult(w, -h).addLocal(pos);
         }
 
         Vector2f noZonePosition(
@@ -231,7 +231,7 @@ public class Radar extends View {
             float cy = radius * Maths.sin(ang);
             return new Vector2f(
                     Maths.clamp(cx, -w, w),
-                    Maths.clamp(cy, -h, h)).addLocal(pos);
+                    -Maths.clamp(cy, -h, h)).addLocal(pos);
         }
 
         Vector2f ZonePosition(
@@ -242,7 +242,7 @@ public class Radar extends View {
             float cs = Maths.cos(angle * Maths.toRadians);
             float sn = Maths.sin(angle * Maths.toRadians);
             into.set((into.x * cs) + (-sn * into.y), (into.x * sn) + (cs * into.y));
-            return pos.add(into.set(Maths.clamp(into.x, -w, w), Maths.clamp(into.y, -h, h)));
+            return pos.add(into.set(Maths.clamp(into.x, -w, w), -Maths.clamp(into.y, -h, h)));
         }
 
         float getAngleFrom(Vector2f player) {

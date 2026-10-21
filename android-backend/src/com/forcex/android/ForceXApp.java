@@ -12,9 +12,14 @@ import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.provider.OpenableColumns;
 import android.provider.Settings;
+import android.text.InputType;
 import android.util.Log;
+import android.view.View;
 import android.view.Window;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -35,6 +40,43 @@ public class ForceXApp extends Activity implements SystemDevice {
     private SystemDevice.OnAndroidFileStream file_system_listener;
     private GLRenderer renderer;
     private Game game;
+    private boolean fullScreen;
+
+    // Oculta barras de sistema (modo inmersivo) y usa también la zona del recorte de cámara.
+    private void applyImmersiveMode() {
+        if (!fullScreen) {
+            return;
+        }
+        Window window = getWindow();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window.getAttributes().layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.setDecorFitsSystemWindows(false);
+            WindowInsetsController controller = window.getInsetsController();
+            if (controller != null) {
+                controller.hide(WindowInsets.Type.systemBars());
+                controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+        } else {
+            window.getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            applyImmersiveMode();
+        }
+    }
 
     private String getFileName(Uri uri) {
         String result = null;
@@ -60,6 +102,7 @@ public class ForceXApp extends Activity implements SystemDevice {
 
 
     public void initialize(Game game, boolean fullScreen) {
+        this.fullScreen = fullScreen;
         if (fullScreen) {
             requestWindowFeature(Window.FEATURE_NO_TITLE);
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -149,6 +192,36 @@ public class ForceXApp extends Activity implements SystemDevice {
     }
 
     @Override
+    public void requestTextInput(final String current_text, final String hint, final boolean numbers_only, final boolean password,
+                                 final SystemDevice.OnTextInputListener listener) {
+        runOnUiThread(() -> {
+            final EditText input = new EditText(this);
+            input.setText(current_text == null ? "" : current_text);
+            input.setSelection(input.getText().length());
+            if (hint != null && hint.length() > 0) {
+                input.setHint(hint);
+            }
+            if (numbers_only) {
+                input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL | InputType.TYPE_NUMBER_FLAG_SIGNED);
+            } else if (password) {
+                input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+            }
+            AlertDialog dialog = new AlertDialog.Builder(this)
+                    .setView(input)
+                    .setPositiveButton("OK", (d, which) -> listener.onTextInput(input.getText().toString()))
+                    .setNegativeButton("Cancel", (d, which) -> listener.onTextInput(null))
+                    .setOnCancelListener(d -> listener.onTextInput(null))
+                    .create();
+            Window window = dialog.getWindow();
+            if (window != null) {
+                window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+            }
+            dialog.show();
+            input.requestFocus();
+        });
+    }
+
+    @Override
     protected void onDestroy() {
         if (isFinishing() && renderer != null) {
             renderer.destroy();
@@ -208,6 +281,9 @@ public class ForceXApp extends Activity implements SystemDevice {
         renderer = new GLRenderer(game, input_processor);
         GLSurfaceView glView = new GLSurfaceView(this);
         glView.setEGLContextClientVersion(2);
+        // El config por defecto de GLSurfaceView no garantiza stencil, que RmlUi
+        // necesita para las clip masks (clip_mask y esquinas redondeadas).
+        glView.setEGLConfigChooser(8, 8, 8, 8, 16, 8);
         glView.setOnTouchListener(input_processor);
         glView.setRenderer(renderer);
         setContentView(glView);

@@ -35,6 +35,18 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    // los TXD de origen (decenas de MB) no se usan en ejecucion: el juego carga los PNG ya convertidos
+    androidResources {
+        ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~:!*.txd'
+    }
+
+    sourceSets {
+        main {
+            // assets del juego (game/...) compartidos con el ejemplo de escritorio
+            assets.srcDirs = ['../core/assets']
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false

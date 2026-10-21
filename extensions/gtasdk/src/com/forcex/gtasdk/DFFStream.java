@@ -70,6 +70,25 @@ public class DFFStream {
         return name;
     }
 
+    private static void validateSkinPalette(String model, DFFSkin skin, int boneCount) {
+        int invalid = 0;
+        int first = -1;
+        for (int i = 0; i < skin.boneIndices.length; i++) {
+            int index = skin.boneIndices[i] & 0xFF;
+            if (index >= boneCount) {
+                if (first == -1) {
+                    first = index;
+                }
+                invalid++;
+            }
+        }
+        if (invalid > 0) {
+            Logger.log("DFFStream: model '" + model + "' has " + invalid
+                    + " skin influences outside the bone palette (boneCount=" + boneCount
+                    + ", first invalid index=" + first + ")");
+        }
+    }
+
     public static DFFSDK readDFF(String path, OnDFFStreamingListener listener, LanguageString lang, String save_collisions_dir) {
         boolean hasListener = (listener != null);
         DFFSDK dff = new DFFSDK();
@@ -307,8 +326,8 @@ public class DFFStream {
                                             case SKIN_PLG: {
                                                 is.skip(8);
                                                 DFFSkin skin = new DFFSkin();
-                                                byte boneCount = is.readByte();
-                                                int specialIndices = is.readByte();
+                                                int boneCount = is.readByte() & 0xFF;
+                                                int specialIndices = is.readByte() & 0xFF;
                                                 skin.unknowns = new byte[2];
                                                 skin.unknowns[0] = is.readByte();
                                                 skin.unknowns[1] = is.readByte();
@@ -316,13 +335,14 @@ public class DFFStream {
                                                 skin.boneIndices = is.readByteArray(geo.vertexCount * 4);
                                                 skin.boneWeigts = is.readFloatArray(geo.vertexCount * 4);
                                                 skin.boneMatrices = new Matrix4f[boneCount];
-                                                for (byte b = 0; b < boneCount; b++) {
+                                                for (int b = 0; b < boneCount; b++) {
                                                     Matrix4f ibm = new Matrix4f(is.readFloatArray(16));
                                                     skin.boneMatrices[b] = ibm;
                                                 }
                                                 if (specialIndices != 0) {
                                                     is.skip(12);
                                                 }
+                                                validateSkinPalette(dff.name, skin, boneCount);
                                                 geo.skin = skin;
                                             }
                                             break;

@@ -70,13 +70,13 @@ public class TabView extends View {
         if (type == EventType.TOUCH_DROPPED) {
             float dx = local.x - extent.x;
             for (byte i = 0; i < tabs.size(); i++) {
-                if (GameUtils.testRect(x, y, separator.set(dx + constraint_width, local.y), constraint_width, extent.y)) {
+                if (GameUtils.testRect(x, y, separator.set(dx + constraint_width * 0.5f, local.y), constraint_width * 0.5f, extent.y)) {
                     if (listener != null) {
                         listener.onTabClick(tabs.get(i), i, (System.currentTimeMillis() - time) > 400);
                     }
                     selected = i;
                 }
-                dx += constraint_width * 2f;
+                dx += constraint_width;
             }
             time = 0;
         }
@@ -103,16 +103,16 @@ public class TabView extends View {
             }
             tvTitleTab.setText(tabs.get(i));
             tvTitleTab.local.set(
-                    x + (tvTitleTab.isConstraintUse() ? constraint_width : tvTitleTab.text_anim_width), local.y);
+                    x + (tvTitleTab.isConstraintUse() ? constraint_width : tvTitleTab.text_anim_width) * 0.5f, local.y);
             tvTitleTab.onDraw(drawer);
             if (selected == i) {
                 float test = extent.y * 0.08f;
-                drawer.setScale(constraint_width, test);
-                drawer.renderQuad(separator.set(x + constraint_width, (local.y - extent.y) + test), tab_selected, -1);
+                drawer.setScale(constraint_width * 0.5f, test);
+                drawer.renderQuad(separator.set(x + constraint_width * 0.5f, (local.y - extent.y) + test), tab_selected, -1);
             }
-            x += constraint_width * 2f;
+            x += constraint_width;
             if (i < tabs.size()) {
-                drawer.setTransform(90, 0, extent.y);
+                drawer.setTransform(90, 0, extent.y * 2f);
                 drawer.renderLine(separator.set(x, local.y), tab_selected);
             }
         }

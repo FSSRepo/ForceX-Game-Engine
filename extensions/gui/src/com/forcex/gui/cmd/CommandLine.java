@@ -8,7 +8,6 @@ import com.forcex.gui.Drawer;
 import com.forcex.gui.UIContext;
 import com.forcex.gui.View;
 import com.forcex.gui.widgets.EditText;
-import com.forcex.gui.widgets.KeyBoard;
 import com.forcex.gui.widgets.TextView;
 import com.forcex.io.BinaryStreamReader;
 import com.forcex.io.FileSystem;
@@ -181,7 +180,7 @@ public class CommandLine extends View implements EditText.onEditTextListener {
         tvText.setTextColor(255, 255, 255);
         tvText.setTextSize(text_size);
         tvText.setTextAlignment(TextView.TEXT_ALIGNMENT_CENTER_LEFT);
-        etInput = new EditText(context, 1.0f, text_size, text_size);
+        etInput = new EditText(context, width, text_size, text_size);
         etInput.setBackground(0, 0, 0, true);
         etInput.setTextColor(255, 255, 255);
         etInput.setEdgeEnabled(false);
@@ -211,22 +210,20 @@ public class CommandLine extends View implements EditText.onEditTextListener {
 
     @Override
     public void onTouch(float x, float y, byte type) {
-        if (GameUtils.testRect(x, y, etInput.local, etInput.getWidth(), etInput.getHeight())) {
+        if (GameUtils.testRect(x, y, etInput.local, etInput.getExtentWidth(), etInput.getExtentHeight())) {
             etInput.onTouch(x, y, type);
             return;
         } else {
-            KeyBoard kb = etInput.getKeyboard();
-            if (kb != null && !kb.testTouch(x, y)) {
-                etInput.detachKeyBoard();
-            } else {
-                if (first) {
-                    oy = y;
-                    first = false;
-                } else if (numLines > max_lines && type == EventType.TOUCH_DRAGGING) {
-                    float delta = (y - oy) * 1.25f;
-                    if (cursorY + delta > 0.0f && cursorY + delta < ((numLines - max_lines) + 2) * text_size * 2f) {
-                        cursorY += delta;
-                    }
+            if (type == EventType.TOUCH_PRESSED) {
+                etInput.clearFocus();
+            }
+            if (first) {
+                oy = y;
+                first = false;
+            } else if (numLines > max_lines && type == EventType.TOUCH_DRAGGING) {
+                float delta = (y - oy) * 1.25f;
+                if (cursorY + delta > 0.0f && cursorY + delta < ((numLines - max_lines) + 2) * text_size) {
+                    cursorY += delta;
                 }
             }
         }
@@ -261,7 +258,7 @@ public class CommandLine extends View implements EditText.onEditTextListener {
             if (words.length > 1) {
                 for (int i = 0; i < words.length; i++) {
                     float w = tvText.getTextWidthReal(words[i]);
-                    if ((t_width + w) > extent.x) {
+                    if ((t_width + w) > extent.x * 2f) {
                         txt_temp += "\n" + words[i] + (i < words.length - 1 ? " " : "");
                         t_width = w + (i < words.length - 1 ? tvText.getTextWidthReal(" ") : 0);
                     } else {
@@ -273,7 +270,7 @@ public class CommandLine extends View implements EditText.onEditTextListener {
                 for (int i = 0; i < words[0].length(); i++) {
                     String sampler = words[0].charAt(i) + "";
                     float w = tvText.getTextWidthReal(sampler);
-                    if ((t_width + w) > extent.x) {
+                    if ((t_width + w) > extent.x * 2f) {
                         txt_temp += "\n" + sampler + (i < words.length - 1 ? " " : "");
                         t_width = w + (i < words.length - 1 ? tvText.getTextWidthReal(" ") : 0);
                     } else {
@@ -298,7 +295,7 @@ public class CommandLine extends View implements EditText.onEditTextListener {
             numLines = lines.length;
         }
         int excedent = (numLines - max_lines);
-        cursorY = (excedent > 0 ? excedent + 2 : 0f) * text_size * 2f;
+        cursorY = (excedent > 0 ? excedent + 2 : 0f) * text_size;
         tvText.setText(txt_temp);
         cmd_txt = txt_temp;
     }
@@ -317,21 +314,21 @@ public class CommandLine extends View implements EditText.onEditTextListener {
             state = -1;
         }
         drawer.setScale(extent.x, extent.y);
-        drawer.scissorArea(local.x, local.y, extent.x, extent.y);
+        drawer.scissorArea(local.x - extent.x, local.y - extent.y, extent.x * 2f, extent.y * 2f);
         drawer.renderQuad(local, background, -1);
-        float dx = (local.x - extent.x);
-        float dy = (local.y + extent.y) + cursorY;
-        tvText.local.set(dx + tvText.getWidth(), dy - tvText.getHeight());
+        float dx = local.x - extent.x;
+        float dy = (local.y - extent.y) - cursorY;
+        tvText.local.set(dx + tvText.getWidth() * 0.5f, dy + tvText.getHeight() * 0.5f);
         tvText.onDraw(drawer);
         if (!running_cmd || request_input) {
             if (!request_input) {
                 etInput.setWidth(width - tvText.getCharWidth('>') * 2f);
                 etInput.updateExtent();
-                etInput.local.set(dx + tvText.getCharWidth('>') * 2f + etInput.getWidth(), tvText.local.y - tvText.getHeight() + text_size);
+                etInput.local.set(dx + tvText.getCharWidth('>') * 2f + etInput.getWidth() * 0.5f, tvText.local.y + tvText.getHeight() * 0.5f + text_size * 0.5f);
             } else {
                 etInput.setWidth(width - tvText.getTextWidthReal(name) * 2f);
                 etInput.updateExtent();
-                etInput.local.set(dx + tvText.getTextWidthReal(name) * 2f + etInput.getWidth(), tvText.local.y - tvText.getHeight() + text_size);
+                etInput.local.set(dx + tvText.getTextWidthReal(name) * 2f + etInput.getWidth() * 0.5f, tvText.local.y + tvText.getHeight() * 0.5f + text_size * 0.5f);
             }
             etInput.onDraw(drawer);
         }
@@ -383,9 +380,7 @@ public class CommandLine extends View implements EditText.onEditTextListener {
 
     @Override
     protected void notifyTouchOutside(float x, float y, byte type) {
-        if (etInput.getKeyboard() != null && !etInput.getKeyboard().testTouch(x, y)) {
-            etInput.detachKeyBoard();
-        }
+        etInput.clearFocus();
     }
 
     public String processPath(String param) {

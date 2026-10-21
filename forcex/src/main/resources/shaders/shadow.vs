@@ -7,9 +7,12 @@ varying vec2 vTexcoords;
 #endif
 
 #ifdef useSkinning
+#ifndef MAX_BONES
+#define MAX_BONES 32
+#endif
 attribute vec4 aBoneWeights;
 attribute vec4 aBoneIndices;
-uniform mat4 uBoneMatrices[32];
+uniform mat4 uBoneMatrices[MAX_BONES];
 uniform bool isAnimation;
 #endif
 

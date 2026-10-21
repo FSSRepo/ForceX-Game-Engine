@@ -5,6 +5,10 @@ import com.forcex.math.Vector2f;
 import com.forcex.math.Vector3f;
 
 public class GameUtils {
+    /**
+     * @deprecated el GUI trabaja en píxeles reales; usar las coordenadas de entrada directamente.
+     */
+    @Deprecated
     public static Vector2f getTouchNormalized(float x, float y) {
         return new Vector2f(2 * (x / FX.gpu.getWidth()) - 1, -(2 * (y / FX.gpu.getHeight()) - 1));
     }

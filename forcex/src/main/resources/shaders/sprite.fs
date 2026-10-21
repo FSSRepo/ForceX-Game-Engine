@@ -11,6 +11,7 @@ varying vec2 texcoord;
 #endif
 varying vec4 vColor;
 uniform sampler2D uTexture;
+uniform float fontMode;
 
 void main() {
 	#ifdef useBlendTextured
@@ -18,6 +19,8 @@ void main() {
 		vec4 tex2 = texture2D(uTexture,texcoord2);
 		gl_FragColor = mix(tex2,tex1,blend) * vColor;
 	#else
-		gl_FragColor = texture2D(uTexture,texcoord) * vColor;
+		vec4 tex = texture2D(uTexture,texcoord);
+		// fontMode: atlas de 1 canal (GL_LUMINANCE), la cobertura va en .r
+		gl_FragColor = fontMode > 0.5 ? vec4(vColor.rgb, vColor.a * tex.r) : tex * vColor;
 	#endif
 }

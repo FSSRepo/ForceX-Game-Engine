@@ -2,7 +2,13 @@ cmake_minimum_required(VERSION 3.5)
 
 project(ForceXLibrary)
 
+# Sin tipo de build el toolchain del NDK compila sin optimizar y con -g.
+if(NOT CMAKE_BUILD_TYPE)
+        set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
 option(FX_OAL           OFF)
+option(FX_RMLUI         OFF)
 
 if(WIN32)
         set(INCLUDES_EXTRAS
@@ -17,7 +23,8 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Android")
         set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
         set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
         
-        add_link_options(-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384)
+        # --strip-all: el NDK siempre pasa -g y estos .so se copian tal cual a android-backend/libs.
+        add_link_options(-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384 -Wl,--strip-all)
         if(FX_OAL)
                 message("ForceX Open AL Audio Engine enabled")
                 add_subdirectory(forcex/jni/oal)
@@ -41,4 +48,10 @@ add_library(
         forcex/jni/dxt/singlecolourfit.cpp
         forcex/jni/dxt/squish.cpp
         forcex/jni/main.cpp
-        forcex/jni/rg_etc1.cpp)
+        forcex/jni/rg_etc1.cpp
+        forcex/jni/fontbake.cpp)
+
+if(FX_RMLUI)
+        message("ForceX RmlUi GUI extension enabled")
+        add_subdirectory(extensions/rml-gui/jni)
+endif()

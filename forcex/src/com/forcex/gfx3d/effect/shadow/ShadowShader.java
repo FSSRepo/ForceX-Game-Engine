@@ -1,5 +1,6 @@
 package com.forcex.gfx3d.effect.shadow;
 
+import com.forcex.core.gpu.SkinningLimits;
 import com.forcex.gfx3d.shader.ShaderProgram;
 
 public class ShadowShader extends ShaderProgram {
@@ -9,6 +10,7 @@ public class ShadowShader extends ShaderProgram {
         String prefix = "";
         if (useSkinning) {
             prefix += "#define useSkinning\n";
+            prefix += "#define MAX_BONES " + SkinningLimits.getMaxBones() + "\n";
         }
         if (filterAplha) {
             prefix += "#define filterAlpha\n";

@@ -28,7 +28,8 @@ public class SlidePanel {
         this.layout = layout;
         layout.beforeSetting = true;
         status = 0;
-        height = 1;
+        height = FX.gpu.getHeight();
+        y_position = height * 0.5f;
     }
 
     public void setYPosition(float y) {
@@ -99,10 +100,10 @@ public class SlidePanel {
     public void render(Drawer drawer) {
         if (status != 0) {
             layout.settingLayout();
-            position.set(-1.0f + layout.getExtentWidth(), (y_position + height) - layout.getExtentHeight());
-            anim = -1.0f - layout.getExtentWidth();
+            position.set(-layout.getExtentWidth(), y_position);
+            anim = -layout.getExtentWidth();
             processAnimation();
-            drawer.setScale(layout.getExtentWidth(), height);
+            drawer.setScale(layout.getExtentWidth(), height * 0.5f);
             position.set(layout.local.x, y_position);
             if (status == 2 && special_dismiss) {
                 float porcent = 1.0f - (timer / duration);
@@ -111,7 +112,8 @@ public class SlidePanel {
                     layout.local.set(anim, position.y);
                     return;
                 }
-                drawer.scissorArea(position.x, position.y, layout.getExtentWidth(), height * porcent);
+                drawer.scissorArea(position.x - layout.getExtentWidth(), position.y - height * 0.5f,
+                        layout.getExtentWidth() * 2f, height * porcent);
             }
             drawer.renderQuad(position, color, texture);
             if (layout != null) {
@@ -160,7 +162,7 @@ public class SlidePanel {
     }
 
     public boolean testTouch(float x, float y) {
-        return GameUtils.testRect(x, y, position, layout.getExtentWidth(), height);
+        return GameUtils.testRect(x, y, position, layout.getExtentWidth(), height * 0.5f);
     }
 
     public void onTouch(float x, float y, byte type) {

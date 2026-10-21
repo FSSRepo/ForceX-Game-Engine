@@ -21,8 +21,9 @@ public class Dialog {
     private Layout layout;
     private byte state = -1; // -1: no show, 1: show,2: hide,3: dismiss
     private float label_width;
-    private float padding = 0.01f;
+    private float padding;
     private float icon_dimens;
+    private final float slide;
     private Color background_color;
     private Vector2f position, position_end; // position_end used when playing animation
     private int icon_texture = -1;
@@ -47,8 +48,10 @@ public class Dialog {
             Toast.error("Dialog Error:\nThere aren't slots availables.", 4f);
         }
 
-        label_height = 0.06f;
-        close_width = 0.07f;
+        label_height = FX.gpu.getHeight() * 0.06f;
+        close_width = FX.gpu.getWidth() * 0.07f;
+        padding = FX.gpu.getWidth() * 0.005f;
+        slide = FX.gpu.getHeight() * 0.05f;
     }
 
     public void setIcon(int texture) {
@@ -116,23 +119,24 @@ public class Dialog {
             }
             if (useLabel) {
                 float dx = layout.extent.x + padding;
-                float dy = layout.extent.y + padding + label_height;
-                drawer.setScale(label_width, label_height);
-                drawer.renderQuad(position.add(-dx + label_width, dy), label_color, -1);
+                float label_y = position.y - (layout.extent.y + padding) - label_height * 0.5f;
+                drawer.setScale(label_width * 0.5f, label_height * 0.5f);
+                drawer.renderQuad(new Vector2f(position.x - dx + label_width * 0.5f, label_y), label_color, -1);
                 if (useCloseButton) {
-                    drawer.setScale(close_width, label_height);
-                    drawer.renderQuad(position.add(dx - close_width, dy), label_color, close_texture);
+                    drawer.setScale(close_width * 0.5f, label_height * 0.5f);
+                    drawer.renderQuad(new Vector2f(position.x + dx - close_width * 0.5f, label_y), label_color, close_texture);
                 }
                 if (icon_texture != -1) {
-                    drawer.setScale(icon_dimens, icon_dimens * layout.getContext().getAspectRatio());
-                    drawer.renderQuad(position.add(-dx + icon_dimens, dy), label_color, icon_texture);
+                    drawer.setScale(icon_dimens * 0.5f, icon_dimens * 0.5f);
+                    drawer.renderQuad(new Vector2f(position.x - dx + icon_dimens * 0.5f, label_y), label_color, icon_texture);
                 }
                 if (tvTitle != null) {
-                    tvTitle.local.set(position.x + (-dx + (icon_texture != -1 ? icon_dimens * 2.1f : 0.01f) + tvTitle.getWidth()), dy + position.y);
+                    float title_x = position.x - dx + (icon_texture != -1 ? icon_dimens * 1.05f : padding) + tvTitle.getWidth() * 0.5f;
+                    tvTitle.local.set(title_x, label_y);
                     tvTitle.onDraw(drawer);
                 }
-                drawer.setScale(layout.extent.x + padding, layout.extent.y + padding + label_height);
-                drawer.renderLineQuad(position.add(0, label_height), border_color);
+                drawer.setScale(layout.extent.x + padding, layout.extent.y + padding + label_height * 0.5f);
+                drawer.renderLineQuad(new Vector2f(position.x, position.y - label_height * 0.5f), border_color);
             } else {
                 drawer.setScale(layout.extent.x + padding, layout.extent.y + padding);
                 drawer.renderLineQuad(position, border_color);
@@ -146,12 +150,12 @@ public class Dialog {
         layout.predictLayoutDimens();
         layout.sortViews();
         if (useLabel) {
-            label_width = (layout.extent.x + padding) - (useCloseButton ? close_width : 0.0f);
-            if (label_width <= 0.07f) {
-                label_width = 0.2f;
+            label_width = (layout.extent.x + padding) * 2f - (useCloseButton ? close_width : 0.0f);
+            if (label_width <= FX.gpu.getWidth() * 0.07f) {
+                label_width = FX.gpu.getWidth() * 0.2f;
             }
             if (icon_texture != -1) {
-                icon_dimens = (label_height / layout.getContext().getAspectRatio()) * 0.8f;
+                icon_dimens = label_height * 0.8f;
             }
         }
     }
@@ -191,7 +195,7 @@ public class Dialog {
                 if (tvTitle != null) {
                     tvTitle.default_color.a = (short) (255.0f * percent);
                 }
-                float delta = (state == 3 || state == 2) ? ((1 - percent) * 0.1f) : -(0.1f - (percent * 0.1f));
+                float delta = (1f - percent) * slide;
                 position.set(position_end.x, position_end.y + delta);
                 time += FX.gpu.getDeltaTime();
             }
@@ -199,12 +203,14 @@ public class Dialog {
     }
 
     public void setUsePadding(boolean z) {
-        padding = z ? 0.01f : 0.0f;
+        padding = z ? FX.gpu.getWidth() * 0.005f : 0.0f;
     }
 
     void onTouch(float x, float y, byte type) {
+        float dx = layout.extent.x + padding;
+        float label_y = position.y - (layout.extent.y + padding) - label_height * 0.5f;
         if (useLabel) {
-            if (type == EventType.TOUCH_PRESSED && GameUtils.testRect(x, y, position.add(-(layout.extent.x + padding) + label_width, layout.extent.y + padding + label_height), label_width, label_height)) {
+            if (type == EventType.TOUCH_PRESSED && GameUtils.testRect(x, y, new Vector2f(position.x - dx + label_width * 0.5f, label_y), label_width * 0.5f, label_height * 0.5f)) {
                 moving = true;
                 local_offset.set(position.x - x, position.y - y);
                 return;
@@ -215,7 +221,7 @@ public class Dialog {
                 moving = false;
                 return;
             }
-            if (useCloseButton && type == EventType.TOUCH_DROPPED && GameUtils.testRect(x, y, position.add((layout.extent.x + padding) - close_width, (layout.extent.y + padding + label_height)), close_width, label_height)) {
+            if (useCloseButton && type == EventType.TOUCH_DROPPED && GameUtils.testRect(x, y, new Vector2f(position.x + dx - close_width * 0.5f, label_y), close_width * 0.5f, label_height * 0.5f)) {
                 if (dismiss_listener != null) {
                     if (dismiss_listener.dismiss()) {
                         dismiss();
@@ -250,7 +256,11 @@ public class Dialog {
     }
 
     boolean testTouch(float x, float y) {
-        return GameUtils.testRect(x, y, position.add(0, (useLabel ? label_height : 0.0f) + padding), layout.getExtentWidth() + padding, layout.getExtentHeight() + padding + (useLabel ? label_height : 0.0f));
+        float half_label = useLabel ? label_height * 0.5f : 0f;
+        return GameUtils.testRect(x, y,
+                new Vector2f(position.x, position.y - half_label),
+                layout.getExtentWidth() + padding,
+                layout.getExtentHeight() + padding + half_label);
     }
 
     public interface OnDismissListener {

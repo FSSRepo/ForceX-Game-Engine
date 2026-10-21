@@ -1,0 +1,20 @@
+type: linear
+orientation: vertical
+width: fill
+height: fill
+padding: 16px
+children:
+  - type: text
+    id: title
+    text: ""
+    textSize: 2%
+    textColor: "#ffffff"
+    textAlign: left
+    align: left
+  - type: text
+    id: action
+    text: ""
+    textSize: 3%
+    textColor: "#ffffff"
+    textAlign: left
+    visibility: gone

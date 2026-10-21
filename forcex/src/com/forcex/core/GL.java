@@ -45,8 +45,11 @@ public interface GL {
     public static final int GL_DYNAMIC_DRAW = 0x88E8;
     public static final int GL_TEXTURE_2D = 0x0DE1;
     public static final int GL_CULL_FACE = 0x0B44;
+    public static final int GL_CULL_FACE_MODE = 0x0B45;
     public static final int GL_BLEND = 0x0BE2;
     public static final int GL_DEPTH_TEST = 0x0B71;
+    public static final int GL_DEPTH_WRITEMASK = 0x0B72;
+    public static final int GL_DEPTH_FUNC = 0x0B74;
     public static final int GL_UNSIGNED_BYTE = 0x1401;
     public static final int GL_UNSIGNED_SHORT = 0x1403;
     public static final int GL_UNSIGNED_INT = 0x1405;
@@ -130,7 +133,19 @@ public interface GL {
 	public static final int GL_STENCIL_BUFFER_BIT = 0x00000400;
 	public static final int GL_STENCIL_TEST = 0x0B90;
 	public static final int GL_SCISSOR_TEST = 0x0C11;
-	public void glScissor (int x, int y, int width, int height);
+    public static final int GL_VIEWPORT = 0x0BA2;
+    public static final int GL_DEPTH_RANGE = 0x0B70;
+    public static final int GL_MAX_VIEWPORT_DIMS = 0x0D3A;
+    public static final int GL_POLYGON_OFFSET_FILL = 0x8037;
+    public static final int GL_POLYGON_OFFSET_FACTOR = 0x8038;
+    public static final int GL_POLYGON_OFFSET_UNITS = 0x2A00;
+    public static final int GL_UNPACK_ALIGNMENT = 0x0CF5;
+    public static final int GL_LINK_STATUS = 0x8B82;
+    public static final int GL_VALIDATE_STATUS = 0x8B83;
+    public static final int GL_ACTIVE_UNIFORMS = 0x8B86;
+    public static final int GL_ACTIVE_ATTRIBUTES = 0x8B89;
+    
+    public void glScissor (int x, int y, int width, int height);
 	
     public void glDisableVertexAttribArray(int indx);
 
@@ -147,6 +162,12 @@ public interface GL {
 
     public int glGetInteger(int pname);
 
+    public void glGetInteger(int pname, int[] out, int offset);
+
+    public void glGetFloat(int pname, float[] out, int offset);
+
+    public boolean glIsEnabled(int cap);
+
     public void glViewport(int width, int height);
 	
 	public int glGetError();
@@ -155,6 +176,11 @@ public interface GL {
     public void glClear(int params);
 
     public void glClearColor(float red, float green, float blue, float alpha);
+
+    public void glColorMask(boolean red, boolean green, boolean blue, boolean alpha);
+
+    /*	GL rasterization	*/
+    public void glPolygonOffset(float factor, float units);
 
     /*	GL cullface	*/
     public void glFrontFace(int param);
@@ -202,10 +228,14 @@ public interface GL {
 
     public void glBufferSubData(int target, int size, Buffer data);
 
+    public void glBufferSubData(int target, int offset, int length, Buffer data);
+
     /*	GL drawbuffer	*/
     public void glDrawArrays(int mode, int first, int count);
 
     public void glDrawElements(int mode, int count);
+
+    public void glDrawElements(int mode, int count, int offset);
 
     public void glLineWidth(float size);
 
@@ -227,12 +257,18 @@ public interface GL {
     public void glEmptyTexture(int target, int width, int height, int internalFormat, int format, int dataFormat);
 
     public void glTexParameteri(int target, int pname, int param);
+
+    public void glPixelStorei(int pname, int param);
+
+    public void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, byte[] data);
+
+    public void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, Buffer data);
 	
 	public void glTexImage2D(int target,int level, int width, int height, int type, byte[] data);
 	
     public void glTexImage2D(int target, int width, int height, int type, byte[] data);
-	
-	public void glTexImage2D(int target, int width, int height, Buffer data);
+
+	public void glTexImage2D(int target, int level, int internalFormat, int width, int height, int format, int type, Buffer data);
 	
 	public void glReadPixel(int x,int y,int width,int height,int format, Buffer data);
 	
@@ -244,6 +280,10 @@ public interface GL {
     public int glGetShaderi(int shader, int pname);
 
     public String glGetShaderInfoLog(int shader);
+
+    public int glGetProgrami(int program, int pname);
+
+    public String glGetProgramInfoLog(int program);
 
     public int glGetUniformLocation(int program, String name);
 

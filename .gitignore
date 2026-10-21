@@ -8,6 +8,13 @@ build-natives
 
 # Natives libreries (heavy files)
 android-backend/libs
+windows-backend/libs/*.dll
 dist
 bin
 own
+plans
+
+# RmlUi GUI: cached dependency sources and prebuilt artifacts
+extensions/rml-gui/deps/*/src
+extensions/rml-gui/deps/*/out
+extensions/rml-gui/deps/*/build

@@ -1,0 +1,63 @@
+type: linear
+orientation: vertical
+width: fill
+height: fill
+background: "#141a24"
+padding: 24px
+children:
+  - type: text
+    text: "ForceX - UI desde YAML"
+    textSize: 44px
+    textColor: "#ffffff"
+    align: center
+    marginTop: 16px
+  - type: text
+    text: "El layout, los margenes y los colores vienen del archivo layouts/main.yaml"
+    textSize: 20px
+    textColor: "#9fb3c8"
+    align: center
+    marginTop: 10px
+  - type: text
+    id: status
+    text: "Pulsa un boton para probar el binding onClick"
+    textSize: 22px
+    textColor: "#f2c94c"
+    align: center
+    marginTop: 28px
+  - type: button
+    text: "Jugar"
+    width: 260px
+    height: 64px
+    textSize: 26px
+    textColor: "#ffffff"
+    background: "#2a6df4"
+    align: center
+    marginTop: 28px
+    onClick: onPlay
+  - type: edit
+    id: name
+    hint: "Escribe tu nombre"
+    width: 320px
+    height: 56px
+    textSize: 22px
+    align: center
+    marginTop: 24px
+  - type: button
+    text: "Saludar"
+    width: 260px
+    height: 56px
+    textSize: 24px
+    textColor: "#ffffff"
+    background: "#1f9d55"
+    align: center
+    marginTop: 12px
+    onClick: onGreet
+  - type: progress
+    id: progress
+    width: 320px
+    height: 18px
+    progress: 0
+    background: "#243244"
+    barColor: "#f2c94c"
+    align: center
+    marginTop: 32px

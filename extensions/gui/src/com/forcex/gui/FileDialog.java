@@ -1,5 +1,6 @@
 package com.forcex.gui;
 
+import com.forcex.FX;
 import com.forcex.core.gpu.Texture;
 import com.forcex.gui.widgets.Button;
 import com.forcex.gui.widgets.GridAdapter;
@@ -32,7 +33,7 @@ public class FileDialog {
         this.extension = ext;
         exticon = new ArrayList<ExtIcon>();
         Layout lay = new Layout(ctx);
-        Button parent = new Button(0.035f, 0.035f);
+        Button parent = new Button(FX.gpu.getWidth() * 0.035f, FX.gpu.getWidth() * 0.035f);
         parent.setOnClickListener(new View.OnClickListener() {
             @Override
             public void OnClick(View view) {
@@ -42,7 +43,7 @@ public class FileDialog {
         parent.setIconTexture(Texture.load("gui/parent.png"));
         lay.setToWrapContent();
         adapter = new FileAdapter(ctx);
-        GridView gridview = new GridView(0.4f, 0.25f, 5, adapter);
+        GridView gridview = new GridView(FX.gpu.getWidth() * 0.4f, FX.gpu.getWidth() * 0.25f, 5, adapter);
         gridview.setApplyAspectRatio(true);
         gridview.setOnItemClickListener(new GridView.OnItemClickListener() {
             @Override
@@ -55,10 +56,10 @@ public class FileDialog {
         tvpath = new TextView(UIContext.default_font);
         tvpath.setAlignment(Layout.RIGHT);
         tvpath.setNoApplyConstraintY(true);
-        tvpath.setTextSize(0.03f);
+        tvpath.setTextSize(FX.gpu.getHeight() * 0.015f);
         lay.add(tvpath);
         lay.add(gridview);
-        Button open = new Button(lang.get("accept"), UIContext.default_font, 0.1f, 0.055f);
+        Button open = new Button(lang.get("accept"), UIContext.default_font, FX.gpu.getWidth() * 0.1f, FX.gpu.getWidth() * 0.055f);
         open.setOnClickListener(new View.OnClickListener() {
             @Override
             public void OnClick(View view) {
@@ -72,12 +73,12 @@ public class FileDialog {
             }
         });
         open.setAlignment(Layout.RIGHT);
-        Button cancel = new Button(lang.get("cancel"), UIContext.default_font, 0.1f, 0.055f);
+        Button cancel = new Button(lang.get("cancel"), UIContext.default_font, FX.gpu.getWidth() * 0.1f, FX.gpu.getWidth() * 0.055f);
         open.setDrawBorders(new Color(10, 180, 220));
         cancel.setDrawBorders(new Color(10, 180, 220));
-        open.setMarginTop(0.02f);
-        open.setTextSize(0.045f);
-        cancel.setTextSize(0.045f);
+        open.setMarginTop(FX.gpu.getHeight() * 0.01f);
+        open.setTextSize(FX.gpu.getHeight() * 0.0225f);
+        cancel.setTextSize(FX.gpu.getHeight() * 0.0225f);
         cancel.setOnClickListener(new View.OnClickListener() {
             @Override
             public void OnClick(View view) {
@@ -86,7 +87,7 @@ public class FileDialog {
                 }
             }
         });
-        cancel.setMarginTop(0.02f);
+        cancel.setMarginTop(FX.gpu.getHeight() * 0.01f);
         cancel.setAlignment(Layout.RIGHT);
         lay.add(open);
         lay.add(cancel);
@@ -237,12 +238,12 @@ public class FileDialog {
             tv = new TextView(UIContext.default_font);
             unknown = Texture.load("gui/file.png", false);
             folder = Texture.load("gui/folder.png", false);
-            tv.setTextSize(0.03f);
+            tv.setTextSize(FX.gpu.getHeight() * 0.015f);
             tv.setConstraintWidth(container.getWidth());
             tv.setTextAlignment(TextView.TEXT_ALIGNMENT_CENTER);
             tv.setAlignment(Layout.CENTER);
-            iv = new ImageView(-1, 0.04f, 0.048f);
-            iv.setMarginTop(0.02f);
+            iv = new ImageView(-1, FX.gpu.getWidth() * 0.04f, FX.gpu.getWidth() * 0.048f);
+            iv.setMarginTop(FX.gpu.getHeight() * 0.01f);
             iv.setApplyAspectRatio(true);
             iv.setAlignment(Layout.CENTER);
             container.add(iv);

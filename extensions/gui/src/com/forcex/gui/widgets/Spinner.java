@@ -1,4 +1,5 @@
 package com.forcex.gui.widgets;
+import com.forcex.FX;
 import com.forcex.gui.*;
 import com.forcex.utils.*;
 import com.forcex.app.*;
@@ -53,7 +54,7 @@ public class Spinner extends View implements ListView.OnItemClickListener {
 	@Override
 	public void onCreate(Drawer drawer) {
 		textview = new TextView(context.default_font);
-		textview.setTextSize(extent.y * 0.8f);
+		textview.setTextSize(extent.y * 1.6f);
 		textview.setText(getItem(0).text);
 		listview.setHeight(extent.y * 4f);
 		listview.updateExt();
@@ -75,7 +76,9 @@ public class Spinner extends View implements ListView.OnItemClickListener {
 	public void onTouch(float x, float y,byte type){
 		if(type == EventType.TOUCH_DROPPED){
 			if(!choose_option){
-				listview.setRelativePosition(local.x,local.y - extent.y - listview.getExtentHeight());
+				listview.setRelativePosition(
+						local.x - FX.gpu.getWidth() * 0.5f,
+						(local.y + extent.y + listview.getExtentHeight()) - FX.gpu.getHeight() * 0.5f);
 				choose_option = context.addSlotPriority(listview);
 				context.addUntouchableView(listview);
 			}else if(GameUtils.testRect(x,y,local,extent.x,extent.y)){

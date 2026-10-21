@@ -1,8 +1,6 @@
-include 'android-backend', 'forcex', 'desktop-backend', 'extensions:gtasdk', 'extensions:gui', 'examples:rpg-car', 'examples:rpg-car:android', 'examples:rpg-car:core', 'examples:rpg-car:desktop'
-include 'ChatOffline', 'EnglishWhisper', 'MapEditorCore', 'MapEditorFree', 'MapEditorPro', 'Zmodeler'
+include 'android-backend', 'forcex', 'desktop-backend', 'extensions:gtasdk', 'extensions:gui', 'extensions:rml-gui', 'examples:rpg-car', 'examples:rpg-car:android', 'examples:rpg-car:core', 'examples:rpg-car:desktop', 'examples:yaml-ui:core', 'examples:yaml-ui:desktop', 'examples:yaml-ui:android'
+include 'MapEditorCore', 'MapEditorFree', 'MapEditorPro', 'Zmodeler'
 
-project(':ChatOffline').projectDir = file('own/ChatOffline')
-project(':EnglishWhisper').projectDir = file('own/EnglishWhisper')
 project(':MapEditorCore').projectDir = file('own/MapEditorCore')
 project(':MapEditorFree').projectDir = file('own/MapEditorFree')
 project(':MapEditorPro').projectDir = file('own/MapEditorPro')

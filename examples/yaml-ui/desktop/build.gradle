@@ -1,0 +1,37 @@
+apply plugin: 'application'
+
+sourceSets.main.java.srcDirs = ["src/"]
+
+java.sourceCompatibility = JavaVersion.VERSION_17
+java.targetCompatibility = JavaVersion.VERSION_17
+
+def osName = System.getProperty('os.name').toLowerCase()
+def isWindows = osName.contains('windows')
+def nativeDistDir = isWindows ? '../../../dist/desktop' : '../../../dist/linux'
+def fxLibName = isWindows ? 'fxcore.dll' : 'libfxcore.so'
+def rmlLibName = isWindows ? 'fxrmlui.dll' : 'libfxrmlui.so'
+def rmlDistDir = isWindows ? '../../../build-natives/windows/Release' : '../../../build-natives/linux/Release'
+def rmluiDemo = project.hasProperty('rmlui')
+def runDir = rmluiDemo ? 'build/rmlui-run' : 'build/libs'
+
+// Copia el binario del engine, RmlUi y los recursos de la demo al directorio de trabajo.
+task prepareRun(type: Copy) {
+    from(nativeDistDir) { include fxLibName }
+    from(rmlDistDir) { include rmlLibName }
+    from('../core/assets') { into 'assets' }
+    from('../../../extensions/rml-gui/RmlUi/Samples/assets/LatoLatin-Regular.ttf') { into 'assets/fonts' }
+    from('../../../extensions/rml-gui/RmlUi/Samples/basic/lottie/data/a_mountain.json') { into 'assets/rml' }
+    into runDir
+}
+
+application {
+    mainClass = rmluiDemo
+            ? 'com.fx.demo.desktop.RmlUiLauncher'
+            : 'com.fx.demo.desktop.DesktopLauncher'
+}
+
+run {
+    dependsOn prepareRun
+    workingDir = file(runDir)
+    jvmArgs '-Djava.library.path=.'
+}

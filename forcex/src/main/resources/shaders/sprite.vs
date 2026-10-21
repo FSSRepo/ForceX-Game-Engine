@@ -4,6 +4,7 @@ attribute vec4 vertex;
 attribute vec3 aColor;
 uniform vec2 position;
 uniform mat2 mat2d;
+uniform mat4 uProjection;
 #else
 attribute vec4 vertex;
 uniform mat4 uMVPMatrix;
@@ -27,7 +28,7 @@ varying vec4 vColor;
 
 void main(){
 	#ifdef useIn2dFlag
-		gl_Position = vec4((vertex.xy * mat2d) + position,0.0,1.0);
+		gl_Position = uProjection * vec4((vertex.xy * mat2d) + position,0.0,1.0);
 		gl_PointSize = 0.09;
 	#else
 		gl_Position = uMVPMatrix * vec4(vertex.xy,0.0,1.0);

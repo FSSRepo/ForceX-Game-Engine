@@ -49,9 +49,9 @@ public abstract class TreeAdapter {
         layout.settingExtentView();
         layout.predictLayoutDimens();
         item_height = layout.getPredictHeight();
-        item_height2 = item_height * 2.0f;
-        residual = treeview.getExtentHeight() / item_height;
-        space_left = treeview.getExtentWidth() * 0.2f;
+        item_height2 = item_height;
+        residual = (treeview.getExtentHeight() * 2f) / item_height;
+        space_left = treeview.getExtentWidth() * 0.4f;
     }
 
     void render(Drawer drawer) {
@@ -69,7 +69,7 @@ public abstract class TreeAdapter {
         }
         delta.set(
                 treeview.local.x - treeview.getExtentWidth() - curX,
-                treeview.local.y + treeview.getExtentHeight() - item_height + curY);
+                treeview.local.y - treeview.getExtentHeight() + item_height * 0.5f + curY);
         num_items = 0;
         width_total = 0.0f;
         renderNode(drawer, root, 0);
@@ -91,7 +91,7 @@ public abstract class TreeAdapter {
         layout.sortViews();
         layout.onDraw(drawer);
         if (node.emphasize > 0) {
-            drawer.setScale(treeview.getExtentWidth(), item_height);
+            drawer.setScale(treeview.getExtentWidth(), item_height * 0.5f);
             drawer.renderQuad(layout.relative.set(treeview.local.x, layout.local.y), emphasize_color, -1);
             if (timer_anim > 0.3f) {
                 inverse = !inverse;
@@ -104,12 +104,12 @@ public abstract class TreeAdapter {
         node.index = num_items;
         drawer.setScale(treeview.getExtentWidth(), 0);
         if (num_items == 0) {
-            drawer.renderLine(layout.relative.set(treeview.local.x, layout.local.y - item_height), treeview.interlined);
+            drawer.renderLine(layout.relative.set(treeview.local.x, layout.local.y - item_height * 0.5f), treeview.interlined);
         } else {
-            drawer.renderLine(layout.relative.set(treeview.local.x, layout.local.y + item_height), treeview.interlined);
+            drawer.renderLine(layout.relative.set(treeview.local.x, layout.local.y + item_height * 0.5f), treeview.interlined);
         }
         num_items++;
-        delta.y -= item_height2;
+        delta.y += item_height2;
         if (node.expand) {
             for (TreeNode tree : node.children) {
                 renderNode(drawer, tree, level + 1);
@@ -121,12 +121,12 @@ public abstract class TreeAdapter {
         if (root == null) {
             return false;
         }
-        if (GameUtils.testRect(x, y, layout.local.set(treeview.local.x, delta.y), treeview.getExtentWidth(), item_height)) {
+        if (GameUtils.testRect(x, y, layout.local.set(treeview.local.x, delta.y), treeview.getExtentWidth(), item_height * 0.5f)) {
             root.emphasize = 0;
             treeview.listener.onClick(treeview, root, (System.currentTimeMillis() - click) > 300);
             return true;
         }
-        delta.y -= item_height2;
+        delta.y += item_height2;
         if (root.expand) {
             for (TreeNode n : root.children) {
                 if (testTouch(x, y, n)) {
@@ -153,19 +153,19 @@ public abstract class TreeAdapter {
             if (curX + deltaX < (width_total - treeview.getExtentWidth())) {
                 curX += deltaX;
             } else if (width_total > treeview.getExtentWidth()) {
-                curXO += 0.04f;
+                curXO += 1f;
             }
             if (curY + deltaY < limitY) {
                 curY += deltaY;
             } else if (num_items > residual) {
-                curYO += 0.04f;
+                curYO += 1f;
             }
         } else if (
                 treeview.listener != null &&
                         type == EventType.TOUCH_DROPPED &&
-                        (Math.abs(curY - curYO) < 0.04f &&
-                                Math.abs(curX - curXO) < 0.04f)) {
-            delta.y = (treeview.local.y + treeview.getExtentHeight()) - item_height + curY;
+                        (Math.abs(curY - curYO) < 5f &&
+                                Math.abs(curX - curXO) < 5f)) {
+            delta.y = (treeview.local.y - treeview.getExtentHeight()) + item_height * 0.5f + curY;
             testTouch(x, y, root);
         }
         ox = x;

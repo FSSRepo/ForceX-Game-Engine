@@ -9,8 +9,9 @@ java {
 
 dependencies {
     implementation project(":forcex")
+    implementation 'org.yaml:snakeyaml:2.2'
 }
 
 jar {
-    archivesBaseName = 'forcex-gui'
+    archiveBaseName.set('forcex-gui')
 }

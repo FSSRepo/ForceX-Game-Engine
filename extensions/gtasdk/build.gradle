@@ -12,5 +12,5 @@ dependencies {
 }
 
 jar {
-    archivesBaseName = 'gtasdk'
+    archiveBaseName.set('gtasdk')
 }

@@ -54,7 +54,13 @@ public abstract class FileSystem {
                 return new BinaryStreamReader(is);
             }
             byte[] buffer = new byte[entry != null ? entry.size : is.available()];
-            is.read(buffer);
+            // read() puede devolver menos bytes que los pedidos (streams de jar), hay que completar el buffer.
+            int total = 0;
+            while (total < buffer.length) {
+                int n = is.read(buffer, total, buffer.length - total);
+                if (n < 0) break;
+                total += n;
+            }
             is.close();
             return new BinaryStreamReader(buffer);
         } catch (Exception e) {
@@ -65,17 +71,17 @@ public abstract class FileSystem {
 
     private InputStream tryOpenFile(String filePath) {
         try {
-            if (FX.device.isJDKDesktop()) {
-                InputStream is = tryLoadFromResources(filePath);
+            InputStream is;
+            if (FX.device != null && !FX.device.isJDKDesktop()) {
+                // Android: los datos del motor (shaders, fonts, gui, ...) y los del juego se leen de los assets del APK
+                is = getAndroidAsset(filePath);
                 if (is != null) return is;
-
-                return tryLoadFromFileSystem(filePath);
             } else {
-                InputStream is = getAndroidAsset(filePath);
+                // Desktop: datos del motor embebidos en el jar
+                is = tryLoadFromResources(filePath);
                 if (is != null) return is;
-
-                return tryLoadFromFileSystem(filePath);
             }
+            return tryLoadFromFileSystem(filePath);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -99,7 +105,7 @@ public abstract class FileSystem {
     public String readString(String path) {
         BinaryStreamReader is = open(path, ReaderType.MEMORY);
         if (is != null) {
-            return new String(is.getData());
+            return new String(is.getData(), java.nio.charset.StandardCharsets.UTF_8);
         }
         return "";
     }

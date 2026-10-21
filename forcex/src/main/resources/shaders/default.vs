@@ -15,10 +15,13 @@ varying vec4 vColor;
 #endif
 
 #ifdef animFlag
+#ifndef MAX_BONES
+#define MAX_BONES 32
+#endif
 attribute vec4 aBoneWeights;
 attribute vec4 aBoneIndices;
 uniform int useSkinning;
-uniform mat4 u_boneMatrices[32];
+uniform mat4 u_boneMatrices[MAX_BONES];
 #endif
 
 #ifdef fogFlag

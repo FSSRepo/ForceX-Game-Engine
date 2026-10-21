@@ -2,6 +2,7 @@ package com.forcex.gfx3d.shader;
 
 import com.forcex.FX;
 import com.forcex.core.GL;
+import com.forcex.core.gpu.SkinningLimits;
 import com.forcex.io.BinaryStreamReader;
 import com.forcex.io.FileSystem;
 import com.forcex.math.Matrix2f;
@@ -32,6 +33,8 @@ public class ShaderProgram {
     private int VertexShaderID;
     private int FragmentShaderID;
     private float[] matrix_data = null;
+    private Matrix4f identityMatrix;
+    private boolean boneLimitWarned;
 
     GL gl = FX.gl;
 
@@ -88,14 +91,15 @@ public class ShaderProgram {
         String vertexSource = prefix;
         String fragmentSource = prefix;
         {
-            BinaryStreamReader is = FX.fs.open(vertex_shader, FileSystem.ReaderType.STREAM);
+            // un texto con saltos de linea es codigo fuente, no una ruta de archivo
+            BinaryStreamReader is = vertex_shader.indexOf('\n') >= 0 ? null : FX.fs.open(vertex_shader, FileSystem.ReaderType.STREAM);
             if (is != null) {
                 vertexSource += new String(is.readByteArray(is.length()));
                 is.clear();
             } else {
                 vertexSource += vertex_shader;
             }
-            is = FX.fs.open(fragment_shader, FileSystem.ReaderType.STREAM);
+            is = fragment_shader.indexOf('\n') >= 0 ? null : FX.fs.open(fragment_shader, FileSystem.ReaderType.STREAM);
             if (is != null) {
                 fragmentSource += new String(is.readByteArray(is.length()));
                 is.clear();
@@ -106,6 +110,16 @@ public class ShaderProgram {
         VertexShaderID = createShader(vertexSource, false);
         FragmentShaderID = createShader(fragmentSource, true);
         program = gl.glCreateProgram(VertexShaderID, FragmentShaderID);
+        if (program != 0 && gl.glGetProgrami(program, GL.GL_LINK_STATUS) != GL.GL_TRUE) {
+            String info = gl.glGetProgramInfoLog(program);
+            Logger.log(info);
+            FX.device.showInfo(
+                    "ForceX: \n" +
+                            "Shader Program:\n" +
+                            "Estate: CRASHED\n" +
+                            "Link: FAILED\n" +
+                            "Info: " + info + "\n", true);
+        }
     }
 
     public void setInt(int loc, int value) {
@@ -161,6 +175,37 @@ public class ShaderProgram {
             array[i].get(matrix_data, i * 16);
         }
         gl.glUniformMatrix4f(loc, array.length, matrix_data);
+    }
+
+    /**
+     * Uploads a bone palette limited to the GPU budget. Null entries are
+     * replaced with the identity matrix so the shader never reads garbage.
+     */
+    public void setBoneMatrices(int loc, Matrix4f[] array) {
+        if (loc == -1 || array == null) {
+            return;
+        }
+        int maxBones = SkinningLimits.getMaxBones();
+        int count = array.length;
+        if (count > maxBones) {
+            if (!boneLimitWarned) {
+                boneLimitWarned = true;
+                Logger.log("ShaderProgram: skeleton has " + array.length + " bones but MAX_BONES="
+                        + maxBones + "; extra bones are ignored.");
+            }
+            count = maxBones;
+        }
+        if (matrix_data == null || matrix_data.length < count * 16) {
+            matrix_data = new float[count * 16];
+        }
+        if (identityMatrix == null) {
+            identityMatrix = new Matrix4f();
+        }
+        for (int i = 0; i < count; i++) {
+            Matrix4f bone = array[i] == null ? identityMatrix : array[i];
+            bone.get(matrix_data, i * 16);
+        }
+        gl.glUniformMatrix4f(loc, count, matrix_data);
     }
 
     public void setVector2(int loc, Vector2f vector) {

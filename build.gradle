@@ -5,7 +5,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.6.0'
+        classpath 'com.android.tools.build:gradle:9.4.0'
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
@@ -56,6 +56,55 @@ project(":extensions:gui") {
     }
 }
 
+project(":extensions:rml-gui") {
+    apply plugin: "java-library"
+
+    dependencies {
+        implementation project(":forcex")
+    }
+}
+
+project(":examples:yaml-ui:core") {
+    apply plugin: "java-library"
+
+    sourceSets.main.java.srcDirs = ["src/"]
+    java.sourceCompatibility = JavaVersion.VERSION_17
+    java.targetCompatibility = JavaVersion.VERSION_17
+
+    dependencies {
+        implementation project(":forcex")
+        implementation project(":extensions:gui")
+        implementation project(":extensions:rml-gui")
+    }
+}
+
+project(":examples:yaml-ui:desktop") {
+    apply plugin: "java-library"
+
+    sourceSets.main.java.srcDirs = ["src/"]
+    java.sourceCompatibility = JavaVersion.VERSION_17
+    java.targetCompatibility = JavaVersion.VERSION_17
+
+    dependencies {
+        implementation project(":examples:yaml-ui:core")
+        implementation project(":desktop-backend")
+        implementation project(":forcex")
+        implementation project(":extensions:gui")
+        implementation project(":extensions:rml-gui")
+    }
+}
+
+project(":examples:yaml-ui:android") {
+    apply plugin: "android"
+
+    dependencies {
+        implementation project(":examples:yaml-ui:core")
+        implementation project(":android-backend")
+        implementation project(":extensions:rml-gui")
+        compileOnly project(":forcex")
+    }
+}
+
 task clean(type: Delete) {
-    delete rootProject.buildDir
+    delete rootProject.layout.buildDirectory
 }

@@ -8,6 +8,7 @@ public class Light
 	private Color color;
 	private Color ambient;
 	private Matrix4f projectionMatrix = null, lookAt = null, projView = null;
+	private float shadow_near = 0.1f, shadow_far = 300.0f, shadow_size = 20.0f;
 	public Vector3f target;
 	
 	public Light(){
@@ -17,10 +18,29 @@ public class Light
 	}
 	
 	public void useInShadow() {
-		projectionMatrix = Matrix4f.orthogonal(-20.0f, 20.0f, -20.0f, 20.0f, 0.1f, 300.0f);
+		projectionMatrix = Matrix4f.orthogonal(-shadow_size, shadow_size, -shadow_size, shadow_size, shadow_near, shadow_far);
 		lookAt = new Matrix4f();
 		projView = new Matrix4f();
 		target = new Vector3f();
+	}
+
+	/** Sets the near/far planes of the orthographic shadow frustum. */
+	public void setShadowRange(float near, float far) {
+		shadow_near = near;
+		shadow_far = far;
+		updateShadowProjection();
+	}
+
+	/** Sets the half-extent of the orthographic shadow frustum. */
+	public void setShadowSize(float size) {
+		shadow_size = size;
+		updateShadowProjection();
+	}
+
+	private void updateShadowProjection() {
+		if (projectionMatrix != null) {
+			projectionMatrix.setOrthogonal(-shadow_size, shadow_size, -shadow_size, shadow_size, shadow_near, shadow_far);
+		}
 	}
 	
 	public void setPosition(Vector3f position){

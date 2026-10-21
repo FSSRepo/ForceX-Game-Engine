@@ -12,8 +12,8 @@
 #include "dxt/squish.h"
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image.h"
-#include "stb_image_write.h"
+#include "stb/stb_image.h"
+#include "stb/stb_image_write.h"
 #include "imageformat.h"
 
 extern "C"
@@ -109,15 +109,15 @@ extern "C"
 	}
 
 	JNIEXPORT jbyteArray JNICALL Java_com_forcex_core_CoreJni_imageDecodeFromMemory(JNIEnv* env, jobject thiz, jintArray jout, jbyteArray pngData) {
+        jsize png_size = env->GetArrayLength(pngData);
         uint8_t* png_java_c = (uint8_t*)env->GetPrimitiveArrayCritical(pngData, 0);
         int32_t width, height, channels;
-        uint8_t* image_data = stbi_load_from_memory(png_java_c, env->GetArrayLength(pngData), &width, &height, &channels, 4);
-        if(image_data) {
-            jbyteArray imageData = transferCtoJVM(env, image_data, width, height, jout);
-            env->ReleasePrimitiveArrayCritical(pngData, png_java_c, 0);
-            return imageData;
-        }
+        uint8_t* image_data = stbi_load_from_memory(png_java_c, png_size, &width, &height, &channels, 4);
+        // Hay que salir de la sección crítica antes de crear arrays (NewByteArray); CheckJNI de Android aborta si no.
         env->ReleasePrimitiveArrayCritical(pngData, png_java_c, 0);
+        if(image_data) {
+            return transferCtoJVM(env, image_data, width, height, jout);
+        }
         return NULL;
     }
 }

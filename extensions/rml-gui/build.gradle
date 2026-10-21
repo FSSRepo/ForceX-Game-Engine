@@ -1,0 +1,17 @@
+apply plugin: "java-library"
+
+sourceSets.main.java.srcDirs = ["src"]
+sourceSets.main.resources.srcDirs = ["src/main/resources"]
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+dependencies {
+    implementation project(":forcex")
+}
+
+jar {
+    archiveBaseName.set('forcex-rmlui-gui')
+}

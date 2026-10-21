@@ -18,6 +18,8 @@ public class SpriteShader extends ShaderProgram {
     int u_blend;
     int u_color;
     int u_mat2d;
+    int u_fontMode;
+    int u_Projection;
     boolean use2d;
     boolean useBlendTextured;
     boolean useColor;
@@ -43,6 +45,7 @@ public class SpriteShader extends ShaderProgram {
         if (use2d) {
             u_Position = getUniformLocation("position");
             u_mat2d = getUniformLocation("mat2d");
+            u_Projection = getUniformLocation("uProjection");
         } else {
             u_MVPMatrix = getUniformLocation("uMVPMatrix");
         }
@@ -54,8 +57,10 @@ public class SpriteShader extends ShaderProgram {
         if (useColor) {
             u_color = getUniformLocation("color");
         }
+        u_fontMode = getUniformLocation("fontMode");
         start();
         setInt(getUniformLocation("uTexture"), 0);
+        setFloat(u_fontMode, 0.0f);
         stop();
     }
 
@@ -67,6 +72,11 @@ public class SpriteShader extends ShaderProgram {
             }
             setColor4(u_color, color);
         }
+    }
+
+    /** Si es true, la textura es un atlas de 1 canal (GL_LUMINANCE) y su valor se usa como alfa. */
+    public void setFontMode(boolean enable) {
+        setFloat(u_fontMode, enable ? 1.0f : 0.0f);
     }
 
     public void setSpriteTexInfo(float numRows, float blend) {
@@ -92,6 +102,12 @@ public class SpriteShader extends ShaderProgram {
     public void setSpriteTransform(Matrix2f matrix) {
         if (use2d) {
             setMatrix2f(u_mat2d, matrix);
+        }
+    }
+
+    public void setProjection(Matrix4f matrix) {
+        if (use2d) {
+            setMatrix4f(u_Projection, matrix);
         }
     }
 

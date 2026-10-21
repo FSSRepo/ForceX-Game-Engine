@@ -14,7 +14,7 @@ public class Texture {
         GL gl = FX.gl;
         int id = gl.glGenTexture();
         gl.glBindTexture(GL.GL_TEXTURE_2D, id);
-        gl.glTexImage2D(GL.GL_TEXTURE_2D, image.width, image.height, image.getBuffer());
+        gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, image.width, image.height, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, image.getBuffer());
         image.clear();
         gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
         gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR);
@@ -28,7 +28,7 @@ public class Texture {
         GL gl = FX.gl;
         int id = gl.glGenTexture();
         gl.glBindTexture(GL.GL_TEXTURE_2D, id);
-        gl.glTexImage2D(GL.GL_TEXTURE_2D, image.width, image.height, image.getBuffer());
+        gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, image.width, image.height, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, image.getBuffer());
         image.clear();
         if (mipmapping) {
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
@@ -47,7 +47,7 @@ public class Texture {
         GL gl = FX.gl;
         int id = gl.glGenTexture();
         gl.glBindTexture(GL.GL_TEXTURE_2D, id);
-        gl.glTexImage2D(GL.GL_TEXTURE_2D, width, height, buffer);
+        gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, buffer);
         if (mipmap) {
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR_MIPMAP_LINEAR);

@@ -22,22 +22,28 @@ public class Toast {
     private final float width;
 	private final float height;
 	private final float text_size;
+    private final float padding;
+    private final float right;
     private final Color background_color;
     private final ArrayList<QueueNotification> queue = new ArrayList<>();
     private final TextView textview;
 
     private Toast(UIContext context) {
+        float screen_width = FX.gpu.getWidth();
+        float screen_height = FX.gpu.getHeight();
         background_color = new Color(0, 0, 0, 180);
         textview = new TextView(UIContext.default_font);
         textview.setTextAlignment(TextView.TEXT_ALIGNMENT_CENTER_LEFT);
         textview.setTextColor(0, 0, 0);
-        text_size = 0.04f;
+        text_size = screen_height * 0.04f;
         textview.setTextSize(text_size);
-        width = 0.4f;
-        height = 0.1f * context.getAspectRatio();
-        textview.setConstraintWidth(width - 0.04f);
-        pos_y_down = -1 + 0.03f + height;
-        pos_y_up = (0.03f + height) * 2f;
+        width = screen_width * 0.4f;
+        height = screen_width * 0.1f;
+        padding = screen_width * 0.02f;
+        right = screen_width * 0.975f;
+        textview.setConstraintWidth(width - padding * 2f);
+        pos_y_down = screen_height - screen_height * 0.015f - height * 0.5f;
+        pos_y_up = screen_height * 0.03f + height;
     }
 
     protected static void create(UIContext context) {
@@ -91,7 +97,7 @@ public class Toast {
     }
 
     protected void addQueue(QueueNotification n) {
-        n.position.set(0, pos_y_down);
+        n.position.set(right - width * 0.5f, pos_y_down);
         queue.add(n);
     }
 
@@ -99,11 +105,11 @@ public class Toast {
         if (queue.isEmpty() || slot_0 == null) {
             return false;
         }
-        if (GameUtils.testRect(x, y, slot_0.position, width, height)) {
+        if (GameUtils.testRect(x, y, slot_0.position, width * 0.5f, height * 0.5f)) {
             clicked_0 = true;
             return true;
         }
-        if (slot_1 != null && GameUtils.testRect(x, y, slot_1.position, width, height)) {
+        if (slot_1 != null && GameUtils.testRect(x, y, slot_1.position, width * 0.5f, height * 0.5f)) {
             clicked_0 = false;
             return true;
         }
@@ -131,7 +137,7 @@ public class Toast {
                 slot_1 = queue.get(1);
                 if (!slot_0.down && slot_0.state == 3) {
                     slot_0.state = 0;
-                    slot_0.position.y = (pos_y_down + pos_y_up);
+                    slot_0.position.y = (pos_y_down - pos_y_up);
                 }
                 if (slot_0.down && slot_0.state == 0) {
                     slot_0.state = 1;
@@ -154,12 +160,12 @@ public class Toast {
         if (porcent < 0.1f) {
             float x = (porcent / 0.1f);
             if (current.state != 2) {
-                current.position.x = (0.95f - (width * x));
+                current.position.x = (right + width * 0.5f) - (width * x);
             }
             background_color.a = (short) (180.0f * x);
             textview.getTextColor().a = (short) (255.0f * x);
         } else if (porcent > 0.1f && porcent < 0.9f) {
-            current.position.x = 0.95f - width;
+            current.position.x = right - width * 0.5f;
             textview.default_color.a = 255;
             background_color.a = (short) (180);
             textview.setTextSize(text_size);
@@ -168,14 +174,14 @@ public class Toast {
             float x = (porcent - 0.9f) / 0.1f;
             background_color.a = (short) (180.0f * (1f - x));
             if (current.state != 2) {
-                current.position.x = ((0.98f - width) + (width * x));
+                current.position.x = ((right - width * 0.5f) + (width * x));
             } else {
                 float sampleWidth = width * (1 - x);
                 float sampleHeight = height * (1 - x);
                 textview.local.set(
-                        current.position.x - sampleWidth + (0.03f + textview.getWidth()),
-                        current.position.y + sampleHeight - (textview.getHeight() + 0.03f));
-                drawer.setScale(sampleWidth, sampleHeight);
+                        current.position.x - sampleWidth * 0.5f + padding + textview.getWidth() * 0.5f,
+                        current.position.y - sampleHeight * 0.5f + padding + textview.getHeight() * 0.5f);
+                drawer.setScale(sampleWidth * 0.5f, sampleHeight * 0.5f);
                 drawer.renderQuad(current.position, background_color, -1);
                 textview.setTextSize(text_size * (1 - x));
             }
@@ -186,9 +192,10 @@ public class Toast {
                 percent_seek = porcent;
             }
             float anim = (porcent - percent_seek) / 0.1f;
-            current.position.y = (current.state == 1) ? (pos_y_down + pos_y_up * anim) : ((pos_y_down + pos_y_up * (1 - anim)));
+            // y crece hacia abajo: "subir" resta.
+            current.position.y = (current.state == 1) ? (pos_y_down - pos_y_up * anim) : (pos_y_down - pos_y_up * (1 - anim));
             if (anim > 1f) {
-                current.position.y = (current.state == 1) ? (pos_y_down + pos_y_up) : (pos_y_down);
+                current.position.y = (current.state == 1) ? (pos_y_down - pos_y_up) : (pos_y_down);
                 current.down = current.state == 3;
                 current.state = 0;
                 percent_seek = -1;
@@ -209,11 +216,11 @@ public class Toast {
             return;
         }
         if (current.state != 2) {
-            drawer.setScale(width, height);
+            drawer.setScale(width * 0.5f, height * 0.5f);
             drawer.renderQuad(current.position, background_color, -1);
             textview.local.set(
-                    current.position.x - width + (0.03f + textview.getWidth()),
-                    current.position.y + height - (textview.getHeight() + 0.03f));
+                    current.position.x - width * 0.5f + padding + textview.getWidth() * 0.5f,
+                    current.position.y - height * 0.5f + padding + textview.getHeight() * 0.5f);
         }
         textview.onDraw(drawer);
         current.lifetime += FX.gpu.getDeltaTime();

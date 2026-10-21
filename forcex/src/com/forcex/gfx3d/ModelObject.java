@@ -160,9 +160,7 @@ public class ModelObject {
                 mesh.initialize();
             }
             if (animator != null && effect_animator) {
-                if (!shader.flag(DefaultShader.SHADOW_MAP_FLAG)) {
-                    animator.update();
-                }
+                animator.update();
                 mesh.render(shader, lighting, animator);
             } else {
                 mesh.render(shader, lighting);

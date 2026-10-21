@@ -46,7 +46,7 @@ public class VertexBuffer {
             }
             if (!isStatic) {
                 gl.glBindBuffer(GL.GL_ARRAY_BUFFER, buffer);
-                gl.glBufferSubData(GL.GL_ARRAY_BUFFER, vertex_info.dataSize, data);
+                gl.glBufferSubData(GL.GL_ARRAY_BUFFER, 0, vertex_info.dataSize, data);
                 gl.glBindBuffer(GL.GL_ARRAY_BUFFER, 0);
             } else {
                 gl.glDeleteBuffer(buffer);

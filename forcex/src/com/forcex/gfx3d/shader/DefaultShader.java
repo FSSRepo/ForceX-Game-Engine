@@ -1,5 +1,6 @@
 package com.forcex.gfx3d.shader;
 
+import com.forcex.core.gpu.SkinningLimits;
 import com.forcex.gfx3d.Camera;
 import com.forcex.gfx3d.effect.Light;
 import com.forcex.math.Matrix3f;
@@ -110,7 +111,7 @@ public class DefaultShader extends ShaderProgram {
     }
 
     public void setBoneMatrices(Matrix4f[] array) {
-        setMatrix4fArray(u_boneMatrices, array);
+        setBoneMatrices(u_boneMatrices, array);
     }
 
     public void setPointSize(float f) {
@@ -147,6 +148,7 @@ public class DefaultShader extends ShaderProgram {
         }
         if (flag(ANIMATION_FLAG)) {
             prefix += "#define animFlag\n";
+            prefix += "#define MAX_BONES " + SkinningLimits.getMaxBones() + "\n";
         }
         if (flag(COLOR_FLAG)) {
             prefix += "#define colorFlag\n";

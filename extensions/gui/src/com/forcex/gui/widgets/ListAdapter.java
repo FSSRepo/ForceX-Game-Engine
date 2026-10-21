@@ -153,18 +153,18 @@ public abstract class ListAdapter<T extends Object> {
                     t_deltaY += delta;
                 }
             } else {
-                setBeginIndex((short) ((listview.local.y + listview.getExtentHeight() - rectcursory - y) * items.size() / extent_y2));
+                setBeginIndex((short) ((y - (listview.local.y - listview.getExtentHeight()) - rectcursory) * items.size() / extent_y2));
             }
-        } else if (listview.listener != null && type == EventType.TOUCH_DROPPED && Math.abs(cursorY - cursorYOld) < 0.04f) {
-            dy = (listview.local.y + listview.getExtentHeight()) - item_height + cursorY;
+        } else if (listview.listener != null && type == EventType.TOUCH_DROPPED && Math.abs(cursorY - cursorYOld) < 5f) {
+            dy = (listview.local.y - listview.getExtentHeight()) + item_height * 0.5f + cursorY;
             touch_time = (System.currentTimeMillis() - start_click) / 1000.0f;
             for (short i = 0; i < items.size(); i++) {
-                if (items.get(i).show && GameUtils.testRect(x, y, layout.local.set(listview.local.x, dy), listview.getExtentWidth(), item_height)) {
+                if (items.get(i).show && GameUtils.testRect(x, y, layout.local.set(listview.local.x, dy), listview.getExtentWidth(), item_height * 0.5f)) {
                     T item = getItem(i);
                     listview.listener.onItemClick(listview, item, filter != null ? (short) filter.getOriginalPosition(item) : i, touch_time > 0.45f);
                     break;
                 }
-                dy -= item_height2;
+                dy += item_height2;
             }
         } else if (type == EventType.TOUCH_DROPPED) {
             touch_time = (System.currentTimeMillis() - start_click) / 1000.0f;
@@ -185,9 +185,9 @@ public abstract class ListAdapter<T extends Object> {
         layout.settingExtentView();
         layout.predictLayoutDimens();
         item_height = layout.getPredictHeight();
-        item_height2 = item_height * 2.0f;
-        rectcursorx = 0.015f;
-        excedent = listview.getExtentHeight() / item_height;
+        item_height2 = item_height;
+        rectcursorx = FX.gpu.getWidth() * 0.0075f;
+        excedent = (listview.getExtentHeight() * 2f) / item_height;
         simpleViewVisible = (byte) Math.round(excedent);
         extent_y2 = listview.getExtentHeight() * 2.0f;
         if (items.size() > 0) {
@@ -209,7 +209,7 @@ public abstract class ListAdapter<T extends Object> {
         }
         if (cursorY < 0.0f || cursorY > 0.0f && items.size() < simpleViewVisible) {
             cursorY = 0.0f;
-            cursorYOld += 0.05f;
+            cursorYOld += 1f;
         }
         if (items.size() > simpleViewVisible && cursorY > ((items.size() - excedent) * item_height2)) {
             cursorY = ((items.size() - excedent) * item_height2);
@@ -229,7 +229,7 @@ public abstract class ListAdapter<T extends Object> {
             }
         }
         testCulling();
-        dy = (listview.local.y + listview.getExtentHeight()) - item_height + cursorY;
+        dy = (listview.local.y - listview.getExtentHeight()) + item_height * 0.5f + cursorY;
         for (short i = 0; i < items.size(); i++) {
             if (items.get(i).show) {
                 updateView(getItem(i), i, layout);
@@ -238,22 +238,23 @@ public abstract class ListAdapter<T extends Object> {
                 layout.predictLayoutDimens();
                 layout.sortViews();
                 if (items.get(i).select) {
-                    drawer.setScale(listview.getExtentWidth(), item_height);
+                    drawer.setScale(listview.getExtentWidth(), item_height * 0.5f);
                     drawer.renderQuad(layout.local, listview.select_color, -1);
                 }
                 layout.onDraw(drawer);
                 drawer.setScale(listview.getExtentWidth(), 0);
                 if (i == 0) {
-                    drawer.renderLine(layout.relative.set(listview.local.x, layout.local.y - item_height), listview.interline_color.setAlpha(1.0f));
+                    drawer.renderLine(layout.relative.set(listview.local.x, layout.local.y - item_height * 0.5f), listview.interline_color.setAlpha(1.0f));
                 } else {
-                    drawer.renderLine(layout.relative.set(listview.local.x, layout.local.y + item_height), listview.interline_color.setAlpha(1.0f));
+                    drawer.renderLine(layout.relative.set(listview.local.x, layout.local.y + item_height * 0.5f), listview.interline_color.setAlpha(1.0f));
                 }
             }
-            dy -= item_height2;
+            dy += item_height2;
         }
         if (cursor_transition > 0.0f) {
             drawer.setScale(rectcursorx, rectcursory);
-            drawer.renderQuad(rectCursor.set(listview.local.x + listview.getExtentWidth() - rectcursorx, listview.local.y + listview.getExtentHeight() - (rectcursory + ((float) index_start / items.size()) * extent_y2)),
+            drawer.renderQuad(rectCursor.set(listview.local.x + listview.getExtentWidth() - rectcursorx,
+                            listview.local.y - listview.getExtentHeight() + rectcursory + ((float) index_start / items.size()) * extent_y2),
                     listview.interline_color.setAlpha(cursor_transition * 0.5f), -1);
         }
         if (cursor_transition > 0.0f) {

@@ -20,7 +20,9 @@ public class Text extends Mesh {
         float[] vertices = new float[text_length * 12];
         float[] uvs = new float[text_length * 8];
         short[] indices = new short[text_length * 6];
-        float cursorX = -getTextWidth(text) * 0.5f;
+        // Unidades de mundo: scale equivale a la altura de línea.
+        float k = scale / font.getLineHeight();
+        float cursorX = -getTextWidth(text) * 0.5f * k;
         int offset = 0, index_offset = 0, vertex_offset = 0;
 
         for (char c : text.toCharArray()) {
@@ -33,45 +35,27 @@ public class Text extends Mesh {
                 indices[index_offset + 5] = (short) (vertex_offset + 3);
                 vertex_offset += 4;
                 index_offset += 6;
-                byte row = (byte) ((c - font.startChar) / font.rowPitch);
-                byte col = (byte) ((c - font.startChar) - (font.rowPitch * row));
-                float u_start = col * font.columnFactor;
-                float v_start = row * font.rowFactor;
-                float u_end = u_start + font.columnFactor;
-                float v_end = v_start + font.rowFactor;
-                vertices[offset * 3] = cursorX;
-                vertices[offset * 3 + 1] = 1;
-                vertices[offset * 3 + 2] = 0;
-
-                uvs[offset * 2] = u_start;
-                uvs[offset * 2 + 1] = v_start;
-                offset++;
-
-                vertices[offset * 3] = cursorX;
-                vertices[offset * 3 + 1] = -1;
-                vertices[offset * 3 + 2] = 0;
-                uvs[offset * 2] = u_start;
-                uvs[offset * 2 + 1] = v_end;
-                offset++;
-
-                vertices[offset * 3] = cursorX + 1;
-                vertices[offset * 3 + 1] = 1;
-                vertices[offset * 3 + 2] = 0;
-                uvs[offset * 2] = u_end;
-                uvs[offset * 2 + 1] = v_start;
-                offset++;
-
-                vertices[offset * 3] = cursorX + 1;
-                vertices[offset * 3 + 1] = -1;
-                vertices[offset * 3 + 2] = 0;
-                uvs[offset * 2] = u_end;
-                uvs[offset * 2 + 1] = v_end;
-                offset++;
+                Font.Glyph g = font.getGlyph(c);
+                float x0 = cursorX + g.xoff * k;
+                float x1 = x0 + g.w * k;
+                float y0 = -g.yoff * k;       // y crece hacia arriba en el mundo
+                float y1 = y0 - g.h * k;
+                float[][] corners = {
+                    {x0, y0, g.u0, g.v0},
+                    {x0, y1, g.u0, g.v1},
+                    {x1, y0, g.u1, g.v0},
+                    {x1, y1, g.u1, g.v1}
+                };
+                for (float[] v : corners) {
+                    vertices[offset * 3] = v[0];
+                    vertices[offset * 3 + 1] = v[1];
+                    vertices[offset * 3 + 2] = 0;
+                    uvs[offset * 2] = v[2];
+                    uvs[offset * 2 + 1] = v[3];
+                    offset++;
+                }
             }
-            cursorX += font.char_widths[(byte) c & 0xff];
-        }
-        for (offset = 0; offset < vertices.length; offset++) {
-            vertices[offset] *= scale;
+            cursorX += font.getAdvance(c) * k;
         }
         setVertices(vertices);
         setTextureCoords(uvs);
@@ -111,7 +95,7 @@ public class Text extends Mesh {
     private float getTextWidth(String text) {
         float text_width = 0.0f;
         for (short i = 0; i < text.length(); i++) {
-            text_width += font.char_widths[(byte) text.charAt(i) & 0xff];
+            text_width += font.getAdvance(text.charAt(i));
         }
         return text_width;
     }

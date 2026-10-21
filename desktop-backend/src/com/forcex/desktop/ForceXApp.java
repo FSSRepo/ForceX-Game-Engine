@@ -216,4 +216,9 @@ public class ForceXApp implements SystemDevice {
         // TODO Auto-generated method stub
 
     }
+
+    @Override
+    public void requestTextInput(String current_text, String hint, boolean numbers_only, boolean password, OnTextInputListener listener) {
+        // En escritorio el EditText recibe las teclas físicas directamente (ver EditText.onKeyEvent).
+    }
 }

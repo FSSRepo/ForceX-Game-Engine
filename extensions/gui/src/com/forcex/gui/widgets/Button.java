@@ -38,7 +38,7 @@ public class Button extends View {
     }
 
     public Button(String text, Font font) {
-        this(0.1f, 0.1f);
+        this(120f, 48f);
         textview = new TextView(font);
         textview.setText(text);
         textview.setTextAlignment(TextView.TEXT_ALIGNMENT_CENTER);
@@ -94,8 +94,8 @@ public class Button extends View {
     public void onCreate(Drawer drawer) {
         if (textview != null && !adaptDimensions) {
             if (texture != -1) {
-                icon_dimen = height * 0.9f;
-                width += icon_dimen * 0.5f;
+                icon_dimen = height * 0.45f;
+                width += icon_dimen * 2f;
             }
         }
         if (round != null) {
@@ -111,16 +111,15 @@ public class Button extends View {
 
     @Override
     public void updateExtent() {
-        if (textview != null) {
-            if (adaptDimensions) {
-                width = textview.getWidth();
-                height = textview.getHeight();
-                if (texture != -1) {
-                    icon_dimen = height * 0.9f;
-                    width += icon_dimen;
-                }
+        if (textview != null && adaptDimensions) {
+            width = textview.getWidth();
+            height = textview.getHeight();
+            if (texture != -1) {
+                icon_dimen = height * 0.45f;
+                width += icon_dimen * 2f;
             }
         }
+        super.updateExtent();
     }
 
     @Override
@@ -142,9 +141,9 @@ public class Button extends View {
         }
         if (textview != null) {
             if (texture != -1) {
-                drawer.setScale(icon_dimen, icon_dimen * (applyAspectRatio ? context.getAspectRatio() : 1.0f));
+                drawer.setScale(icon_dimen, icon_dimen);
                 drawer.renderQuad(local.sub(extent.x - icon_dimen, 0), null, texture);
-                textview.local.set(local.x - (extent.x - icon_dimen * 2f - textview.getWidth()), local.y);
+                textview.local.set(local.x - extent.x + icon_dimen * 2f + textview.getWidth() * 0.5f, local.y);
             } else {
                 textview.local.set(local);
             }

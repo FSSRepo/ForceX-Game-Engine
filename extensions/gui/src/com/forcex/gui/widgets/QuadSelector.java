@@ -86,7 +86,7 @@ public class QuadSelector extends View {
 
     @Override
     protected boolean testTouch(float x, float y) {
-        return isVisible() && GameUtils.testRect(x, y, local, width, height);
+        return isVisible() && GameUtils.testRect(x, y, local, getExtentWidth(), getExtentHeight());
     }
 
     @Override
@@ -119,12 +119,6 @@ public class QuadSelector extends View {
     public void onDestroy() {
         setVisibility(INVISIBLE);
         color = null;
-    }
-
-    @Override
-    public void updateExtent() {
-        extent.set(width, height * (applyAspectRatio ? context.getAspectRatio() : 1.0f));
-        local.set(relative);
     }
 
     public interface OnSelectionListener {

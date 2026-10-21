@@ -1,0 +1,22 @@
+type: linear
+relative: true
+width: fill
+height: fill
+children:
+  - type: joystick
+    id: joystick
+    radius: 11%
+    x: -38%
+    y: 22%
+  - type: button
+    id: enter_exit
+    text: "Subir"
+    width: 18%
+    height: 12%
+    textSize: 5%
+    textColor: "#ffffff"
+    background: "#cc2a6df4"
+    x: 38%
+    y: 22%
+    visibility: gone
+    onClick: onEnterExit

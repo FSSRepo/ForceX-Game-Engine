@@ -140,23 +140,23 @@ public abstract class GridAdapter<T extends Object> {
                     curYO += delta;
                 }
             } else {
-                setBeginRow((short) ((gridview.local.y + gridview.getExtentHeight() - rectcursory - y) * num_cols / extent_y2));
+                setBeginRow((short) ((y - (gridview.local.y - gridview.getExtentHeight()) - rectcursory) * num_cols / extent_y2));
             }
-        } else if (gridview.listener != null && type == EventType.TOUCH_DROPPED && (Math.abs(curY - curYO) < 0.03f)) {
-            dx = (gridview.local.x - gridview.getExtentWidth()) + gridview.max_item_width;
-            dy = (gridview.local.y + gridview.getExtentHeight()) - item_height + curY;
+        } else if (gridview.listener != null && type == EventType.TOUCH_DROPPED && (Math.abs(curY - curYO) < 5f)) {
+            dx = (gridview.local.x - gridview.getExtentWidth()) + gridview.max_item_width * 0.5f;
+            dy = (gridview.local.y - gridview.getExtentHeight()) + item_height * 0.5f + curY;
             touch_time = (System.currentTimeMillis() - start_click) / 1000.0f;
             t_deltaY = 0;
             byte curx = 0;
             for (short i = 0; i < items.size(); i++) {
-                if (items.get(i).show && GameUtils.testRect(x, y, layout.local.set(dx + (curx * gridview.max_item_width * 2f), dy), gridview.max_item_width, item_height)) {
+                if (items.get(i).show && GameUtils.testRect(x, y, layout.local.set(dx + (curx * gridview.max_item_width), dy), gridview.max_item_width * 0.5f, item_height * 0.5f)) {
                     gridview.listener.onItemClick(getItem(i), i, touch_time > 0.5f);
                     touchCursor = false;
                     break;
                 }
                 curx++;
                 if (curx == gridview.limitX) {
-                    dy -= item_height2;
+                    dy += item_height2;
                     curx = 0;
                 }
             }
@@ -177,12 +177,12 @@ public abstract class GridAdapter<T extends Object> {
         layout.settingExtentView();
         layout.predictLayoutDimens();
         item_height = layout.getPredictHeight();
-        item_height2 = item_height * 2.0f;
-        residual_space = gridview.getExtentHeight() / item_height;
+        item_height2 = item_height;
+        residual_space = (gridview.getExtentHeight() * 2f) / item_height;
         simpleViewVisible = (byte) Math.ceil(residual_space);
         num_cols = (short) Math.ceil((float) items.size() / gridview.limitX);
         extent_y2 = gridview.getExtentHeight() * 2.0f;
-        rectcursorx = 0.015f;
+        rectcursorx = FX.gpu.getWidth() * 0.0075f;
         if (items.size() > 0) {
             rectcursory = gridview.getExtentHeight() * ((float) simpleViewVisible / num_cols);
         } else {
@@ -197,10 +197,10 @@ public abstract class GridAdapter<T extends Object> {
         }
         if (curY < 0.0f || curY > 0.0f && items.size() < simpleViewVisible) {
             curY = 0.0f;
-            curYO += 0.05f;
+            curYO += 1f;
         }
-        dx = (gridview.local.x - gridview.getExtentWidth()) + gridview.max_item_width;
-        dy = (gridview.local.y + gridview.getExtentHeight()) + curY;
+        dx = (gridview.local.x - gridview.getExtentWidth()) + gridview.max_item_width * 0.5f;
+        dy = (gridview.local.y - gridview.getExtentHeight()) + item_height * 0.5f + curY;
         if (Maths.abs(t_deltaY) > gridview.getExtentHeight() * 0.08f && touch_time > 0) {
             if (delta_first) {
                 time = Maths.abs(1f - touch_time);
@@ -225,17 +225,17 @@ public abstract class GridAdapter<T extends Object> {
                 updateView(getItem(i), i, layout);
                 layout.settingExtentView();
                 layout.predictLayoutDimens();
-                layout.local.set(dx + (curx * gridview.max_item_width * 2f), dy - layout.getExtentHeight());
+                layout.local.set(dx + (curx * gridview.max_item_width), dy);
                 layout.sortViews();
                 if (items.get(i).select) {
-                    drawer.setScale(gridview.max_item_width, item_height);
-                    drawer.renderQuad(rectCursor.set(layout.local.x, dy - item_height), gridview.select_color, -1);
+                    drawer.setScale(gridview.max_item_width * 0.5f, item_height * 0.5f);
+                    drawer.renderQuad(layout.local, gridview.select_color, -1);
                 }
                 layout.onDraw(drawer);
-                if (item_height < layout.getExtentHeight()) {
-                    item_height = layout.getExtentHeight();
-                    item_height2 = item_height * 2.0f;
-                    residual_space = gridview.getExtentHeight() / item_height;
+                if (item_height < layout.getExtentHeight() * 2f) {
+                    item_height = layout.getExtentHeight() * 2f;
+                    item_height2 = item_height;
+                    residual_space = (gridview.getExtentHeight() * 2f) / item_height;
                     simpleViewVisible = (byte) Math.ceil(residual_space);
                     num_cols = (short) Math.round((float) items.size() / gridview.limitX);
                     if (items.size() > 0) {
@@ -247,13 +247,14 @@ public abstract class GridAdapter<T extends Object> {
             }
             curx++;
             if (curx == gridview.limitX) {
-                dy -= item_height2;
+                dy += item_height2;
                 curx = 0;
             }
         }
         if (cursor_transition > 0.0f) {
             drawer.setScale(rectcursorx, rectcursory);
-            drawer.renderQuad(rectCursor.set(gridview.local.x + gridview.getExtentWidth() - rectcursorx, gridview.local.y + gridview.getExtentHeight() - (rectcursory + ((float) col_begin / num_cols) * extent_y2)),
+            drawer.renderQuad(rectCursor.set(gridview.local.x + gridview.getExtentWidth() - rectcursorx,
+                            gridview.local.y - gridview.getExtentHeight() + rectcursory + ((float) col_begin / num_cols) * extent_y2),
                     gridview.interlined.setAlpha(cursor_transition * 0.5f), -1);
         }
         if (cursor_transition > 0.0f) {

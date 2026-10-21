@@ -15,7 +15,7 @@ public class Animator {
     private HashMap<SkeletonNode, Matrix4f> animMatrices = new HashMap<SkeletonNode, Matrix4f>();
     private Matrix4f[] boneMatrices;
     private final SkeletonNode skeleton;
-    private byte numBone = 0;
+    private int numBone = 0;
 
     boolean inverse_time = false;
 
@@ -31,7 +31,7 @@ public class Animator {
     public Animator(SkeletonNode skeleton, int numBones) {
         control = new AnimationControl();
         this.skeleton = skeleton;
-        this.numBone = (byte) numBones;
+        this.numBone = numBones;
     }
 
     /**
@@ -60,7 +60,7 @@ public class Animator {
      * Resets the animation to its initial state.
      */
     public void reset() {
-        control.putCommand(AnimationControl.CMD_RESET);
+        control.reset();
         update();
     }
 
@@ -195,12 +195,27 @@ public class Animator {
     public void updateBonesMatrices() {
         animMatrices.clear();
         updateBoneMatrix(skeleton);
-        boneMatrices = new Matrix4f[numBone];
-        for (SkeletonNode frame : animMatrices.keySet()) {
-            Matrix4f transform = animMatrices.get(frame).mult(null, frame.InverseBoneMatrix);
-            if (frame.boneID != -1) {
-                boneMatrices[frame.boneNum] = transform;
+        if (boneMatrices == null || boneMatrices.length != numBone) {
+            boneMatrices = new Matrix4f[numBone];
+            for (int i = 0; i < numBone; i++) {
+                boneMatrices[i] = new Matrix4f();
             }
+        }
+        for (int i = 0; i < boneMatrices.length; i++) {
+            if (boneMatrices[i] == null) {
+                boneMatrices[i] = new Matrix4f();
+            } else {
+                boneMatrices[i].setIdentity();
+            }
+        }
+        for (SkeletonNode frame : animMatrices.keySet()) {
+            if (frame.boneID == -1 || frame.InverseBoneMatrix == null) {
+                continue;
+            }
+            if (frame.boneNum < 0 || frame.boneNum >= boneMatrices.length) {
+                continue;
+            }
+            boneMatrices[frame.boneNum].set(animMatrices.get(frame).mult(null, frame.InverseBoneMatrix));
         }
     }
 

@@ -7,9 +7,11 @@ import com.forcex.gfx3d.effect.shadow.ShadowMap;
 import com.forcex.gfx3d.shader.DefaultShader;
 import com.forcex.gfx3d.shapes.DrawDynamicTriangle;
 import com.forcex.math.Vector4f;
+import com.forcex.utils.Logger;
 
 public class ModelRenderer {
     public int shadowMap = -1;
+    private int shadowMapSize = ShadowMap.DEFAULT_SIZE;
     Vector4f clipPlane;
     Environment env;
     DefaultShader shader;
@@ -72,6 +74,16 @@ public class ModelRenderer {
         useShadowPCF = usePCF;
     }
 
+    /**
+     * Assigns the shadow map rendered by the {@link ShadowMap} pass. The
+     * renderer takes both the texture and the resolution from that instance,
+     * so the PCF offsets always match the real texture size.
+     */
+    public void setShadowMap(ShadowMap map) {
+        shadowMap = map.getShadowTexture();
+        shadowMapSize = map.getSize();
+    }
+
     public void useGammaCorrection(boolean z) {
         useGammaCorrection = z;
     }
@@ -104,7 +116,7 @@ public class ModelRenderer {
             shader.setLight(env.light);
             if (useShadowMap) {
                 if (useShadowPCF) {
-                    shader.setShadowParams(env.light.getProjView(), 0.5f, ShadowMap.size);
+                    shader.setShadowParams(env.light.getProjView(), 0.5f, shadowMapSize);
                 } else {
                     shader.setShadowParams(env.light.getProjView(), 0.5f);
 
@@ -146,9 +158,13 @@ public class ModelRenderer {
             flag |= DefaultShader.REFLECTION_MAP;
         }
         if (useShadowMap) {
-            flag |= DefaultShader.SHADOW_MAP_FLAG;
-            if (useShadowPCF) {
-                flag |= DefaultShader.SHADOW_PCF;
+            if (env.light != null) {
+                flag |= DefaultShader.SHADOW_MAP_FLAG;
+                if (useShadowPCF) {
+                    flag |= DefaultShader.SHADOW_PCF;
+                }
+            } else {
+                Logger.log("ForceX: shadow map enabled without a light; the flag was ignored.");
             }
         }
         if (useClipPlane) {

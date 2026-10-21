@@ -32,7 +32,7 @@ public class ImageView extends View {
     }
 
     public ImageView(int texture) {
-        this(texture, 0.2f, 0.2f);
+        this(texture, 120f, 120f);
     }
 
     public void setMixColor(int red, int green, int blue) {
@@ -93,10 +93,10 @@ public class ImageView extends View {
             ibo_circle = Drawer.createBuffer(indices, true, false);
         }
         vbo_fb = Drawer.createBuffer(new float[]{
-                -1, 1, 0, 1, 1, 1, 1,
-                -1, -1, 0, 0, 1, 1, 1,
-                1, 1, 1, 1, 1, 1, 1,
-                1, -1, 1, 0, 1, 1, 1
+                -1, 1, 0, 0, 1, 1, 1,
+                -1, -1, 0, 1, 1, 1, 1,
+                1, 1, 1, 0, 1, 1, 1,
+                1, -1, 1, 1, 1, 1, 1
         }, false, false);
     }
 
@@ -134,12 +134,6 @@ public class ImageView extends View {
             FX.gl.glDeleteBuffer(ibo_circle);
         }
         color = null;
-    }
-
-    @Override
-    public void updateExtent() {
-        extent.set(width, height * (applyAspectRatio ? context.getAspectRatio() : 1.0f));
-        local.set(relative);
     }
 
 }

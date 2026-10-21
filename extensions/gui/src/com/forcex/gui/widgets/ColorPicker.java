@@ -1,5 +1,6 @@
 package com.forcex.gui.widgets;
 
+import com.forcex.FX;
 import com.forcex.core.gpu.Texture;
 import com.forcex.gui.Drawer;
 import com.forcex.gui.UIContext;
@@ -22,7 +23,7 @@ public class ColorPicker extends View implements ProgressBar.onSeekListener {
         tvColors = new TextView(UIContext.default_font);
         tvColors.setTextAlignment(TextView.TEXT_ALIGNMENT_CENTER);
         for (byte i = 0; i < 4; i++) {
-            colors_bar[i] = new ProgressBar(width, (height - 0.05f) / 4f);
+            colors_bar[i] = new ProgressBar(width, (height * 0.9f) / 4f);
             colors_bar[i].setId(i);
             if (i == 3) {
                 colors_bar[3].use2ndBackgroundTexture = true;
@@ -119,7 +120,8 @@ public class ColorPicker extends View implements ProgressBar.onSeekListener {
 
     @Override
     public void onDraw(Drawer drawer) {
-        float dy = (local.y + extent.y) - 0.02f - colors_bar[0].getHeight();
+        float gap = FX.gpu.getHeight() * 0.01f;
+        float dy = (local.y - extent.y) + gap + colors_bar[0].getHeight() * 0.5f;
         for (int i = 0; i < 4; i++) {
             if (i == 3 &&
                     colors_bar[3].colors[1].r < 120 &&
@@ -134,7 +136,7 @@ public class ColorPicker extends View implements ProgressBar.onSeekListener {
             tvColors.setText(getColor(i) + ":" + (int) (255.0f * (colors_bar[i].getProgress() / 100.0f)));
             tvColors.local.set(local.x, colors_bar[i].local.y);
             tvColors.onDraw(drawer);
-            dy -= (colors_bar[i].getHeight() * 2f) + 0.02f;
+            dy += colors_bar[i].getHeight() + gap;
         }
     }
 

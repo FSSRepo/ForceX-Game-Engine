@@ -23,7 +23,7 @@ public class RenderView extends View {
 
     public RenderView(float width, float height, onRenderListener listener) {
         setDimens(width, height);
-        fbo = new FrameBuffer((int) (width * FX.gpu.getWidth()), (int) (height * FX.gpu.getHeight()));
+        fbo = new FrameBuffer((int) width, (int) height);
         update_framebuffer = false;
         mix_color = new Color(Color.WHITE);
         edge_color = new Color(Color.BLACK);
@@ -38,10 +38,6 @@ public class RenderView extends View {
                 1, 1, 1, 1, 1, 1, 1,
                 1, -1, 1, 0, 1, 1, 1
         }, false, false);
-        if (applyAspectRatio) {
-            fbo.delete();
-            fbo.create((int) (extent.x * FX.gpu.getWidth()), (int) (extent.y * FX.gpu.getHeight()));
-        }
     }
 
     public void setDimens(float width, float height) {
@@ -62,7 +58,7 @@ public class RenderView extends View {
     public void onDraw(Drawer drawer) {
         if (update_framebuffer) {
             fbo.delete();
-            fbo.create((int) (extent.x * FX.gpu.getWidth()), (int) (extent.y * FX.gpu.getHeight()));
+            fbo.create((int) (extent.x * 2f), (int) (extent.y * 2f));
             update_framebuffer = false;
         }
         drawer.setScale(extent.x, extent.y);

@@ -2,11 +2,13 @@ package com.forcex.gtasdk;
 
 import com.forcex.anim.SkeletonNode;
 import com.forcex.core.GL;
+import com.forcex.core.gpu.SkinningLimits;
 import com.forcex.gfx3d.Mesh;
 import com.forcex.gfx3d.MeshPart;
 import com.forcex.gfx3d.ModelObject;
 import com.forcex.math.MathGeom;
 import com.forcex.math.Matrix4f;
+import com.forcex.utils.Logger;
 
 import java.util.ArrayList;
 
@@ -25,6 +27,7 @@ public class DFFSDK {
     public String name = "";
     protected boolean hasExtensionDff;
     private DFFFrame root;
+    private boolean skinPaletteWarned;
 
     public DFFFrame findFrame(String name) {
         for (int i = 0; i < fms.size(); i++) {
@@ -236,6 +239,12 @@ public class DFFSDK {
         if (isSkin()) {
             mesh.setBoneWeights(geo.skin.boneWeigts);
             mesh.setBoneIndices(geo.skin.boneIndices);
+            if (mesh.buildBoneBatches(SkinningLimits.getMaxBones())) {
+                Logger.log("DFFSDK: model '" + name + "' bones=" + bones.size()
+                        + " usedBones=" + mesh.getUsedBoneCount()
+                        + " batches=" + mesh.getBoneBatches().size()
+                        + " maxBones=" + SkinningLimits.getMaxBones());
+            }
         }
         o.setMesh(mesh);
         return o;
@@ -276,15 +285,35 @@ public class DFFSDK {
     public SkeletonNode getSkeleton(DFFFrame fm) {
         SkeletonNode root = new SkeletonNode();
         root.name = fm.name;
-        root.boneID = (short) fm.hanim.boneID;
-        root.boneNum = (short) getBone(fm.hanim.boneID).num;
-        root.InverseBoneMatrix = geom.get(0).skin.boneMatrices[root.boneNum];
+        root.boneID = fm.hanim != null ? fm.hanim.boneID : -1;
+        DFFHanim.Bone bone = fm.hanim != null ? getBone(fm.hanim.boneID) : null;
+        root.boneNum = bone != null ? bone.num : -1;
+        root.InverseBoneMatrix = resolveInverseBoneMatrix(root.boneNum);
         root.InverseBoneMatrix.data[Matrix4f.M33] = 1.0f;
         root.modelMatrix = fm.getModelMatrix();
         for (DFFFrame fmc : fm.children) {
             root.addChild(getSkeleton(fmc));
         }
         return root;
+    }
+
+    /**
+     * Returns the inverse bone matrix for the given palette index. Skeleton
+     * nodes that do not belong to the skin palette (auxiliary frames) get an
+     * identity matrix instead of an out of bounds access.
+     */
+    private Matrix4f resolveInverseBoneMatrix(int boneNum) {
+        DFFGeometry first = geom.get(0);
+        Matrix4f[] palette = first.skin != null ? first.skin.boneMatrices : null;
+        if (palette != null && boneNum >= 0 && boneNum < palette.length && palette[boneNum] != null) {
+            return palette[boneNum];
+        }
+        if (!skinPaletteWarned) {
+            skinPaletteWarned = true;
+            Logger.log("DFFSDK: model '" + name + "' has skeleton nodes outside its skin palette (boneNum="
+                    + boneNum + ", boneCount=" + (palette != null ? palette.length : 0) + "); identity used.");
+        }
+        return new Matrix4f();
     }
 
     private DFFHanim.Bone getBone(int id) {

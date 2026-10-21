@@ -18,14 +18,13 @@ public class View {
     protected UIContext context;
 
     protected boolean created = false,
-			applyAspectRatio = false,
 			ignoreTouch = false,
 			noApplyYConstaint = false;
     protected float margin_right = 0.0f,
             margin_left = 0.0f,
             margin_top = 0.0f,
             margin_bottom = 0.0f,
-    // View extents
+    // View dimensions (pixels, top-left origin)
     		width = 0.0f,
             height = 0.0f;
     protected byte alignment, width_type, height_type;
@@ -99,12 +98,13 @@ public class View {
     }
 
     public void updateExtent() {
+        extent.set(width * 0.5f, height * 0.5f);
     }
 
     void draw(Drawer drawer) {
         if (!hasParent()) {
-            extent.set(width, height * (applyAspectRatio ? context.getAspectRatio() : 1.0f));
-            local.set(relative);
+            extent.set(width * 0.5f, height * 0.5f);
+            local.set(FX.gpu.getWidth() * 0.5f + relative.x, FX.gpu.getHeight() * 0.5f + relative.y);
         }
         if (!created) {
             onCreate(drawer);
@@ -150,7 +150,7 @@ public class View {
     }
 
     public void setApplyAspectRatio(boolean z) {
-        applyAspectRatio = z;
+        // Obsoleto: el GUI ya trabaja en píxeles reales.
     }
 
     public float getExtentWidth() {
@@ -162,19 +162,19 @@ public class View {
     }
 
     public int getDisplayWidth() {
-        return (int) (FX.gpu.getWidth() * extent.x);
+        return (int) (extent.x * 2f);
     }
 
     public int getDisplayHeight() {
-        return (int) (FX.gpu.getHeight() * extent.y);
+        return (int) (extent.y * 2f);
     }
 
     public int getDisplayLocalX() {
-        return (int) ((FX.gpu.getWidth() * ((local.x - width) + 1.0f)) * 0.5f);
+        return (int) local.x;
     }
 
     public int getDisplayLocalY() {
-        return (int) ((FX.gpu.getHeight() * ((local.y - height) + 1.0f)) * 0.5f);
+        return (int) local.y;
     }
 
     public void setWidthType(byte type) {

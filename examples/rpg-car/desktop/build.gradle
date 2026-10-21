@@ -1,21 +1,115 @@
 plugins {
     id 'java'
     id 'application'
-    id 'com.github.johnrengelman.shadow' version '7.0.0'
+    id 'com.gradleup.shadow' version '9.2.2'
 }
 
-sourceCompatibility = 1.8
-java.targetCompatibility = JavaVersion.VERSION_17
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
 sourceSets.main.java.srcDirs = ["src/"]
+
+// Host platform detection: build.bat produces dist/desktop on Windows and
+// build.sh produces dist/linux on Linux.
+def osName = System.getProperty('os.name').toLowerCase()
+def osArch = System.getProperty('os.arch').toLowerCase()
+def isWindows = osName.contains('windows')
+def isLinux = osName.contains('linux')
+def isMac = osName.contains('mac') || osName.contains('darwin')
+
+def nativeDistDir = isWindows ? '../../../dist/desktop' : (isLinux ? '../../../dist/linux' : '../../../dist/macos')
+
+// Must match NativeLoader: the binary is embedded at natives/<os>/<arch>/<mapped name>
+def fxOs = isWindows ? 'windows' : (isLinux ? 'linux' : 'macos')
+def fxArch = (osArch == 'amd64' || osArch == 'x86_64' || osArch == 'x64') ? 'amd64'
+        : (osArch == 'aarch64' || osArch == 'arm64') ? 'aarch64' : osArch
+def fxLibName = isWindows ? 'fxcore.dll' : (isMac ? 'libfxcore.dylib' : 'libfxcore.so')
+def fxNativesDir = "natives/${fxOs}/${fxArch}"
+
+// Third-party native loaded by its own System.loadLibrary(...) call; only the
+// Windows binary ships in this repository.
+def openplLibName = isWindows ? 'openpl64.dll' : 'libopenpl64.so'
+
+def fxcorePath = file("${nativeDistDir}/${fxLibName}")
+
+task verifyNatives {
+    doFirst {
+        if (!fxcorePath.exists()) {
+            throw new GradleException("${fxLibName} not found at ${fxcorePath}. Run ${isWindows ? 'build.bat' : 'build.sh'} to generate dist/ first.")
+        }
+    }
+}
 
 shadowJar {
     archiveBaseName = 'rpg-car.jar'
+    dependsOn verifyNatives
 
     manifest {
         attributes 'Main-Class': 'com.fss.rpg.DesktopLauncher'
     }
+
+    // Only the engine native is embedded; NativeLoader extracts it to a temp
+    // folder and loads it by absolute path (java.library.path is not needed).
+    from(nativeDistDir) { include fxLibName; into fxNativesDir }
 }
 
 application {
     mainClass = 'com.fss.rpg.DesktopLauncher'
+}
+
+// Development flow only (gradle run uses classes, not the fat jar)
+task copyNatives(type: Copy) {
+    from '../core/libs'
+    from nativeDistDir
+    include fxLibName, openplLibName
+    into 'build/libs'
+}
+
+shadowJar.dependsOn copyNatives
+startScripts.dependsOn copyNatives
+
+run {
+    workingDir = file('build/libs')
+    jvmArgs '-Djava.library.path=.'
+}
+
+// Assembles a self-contained runnable folder: the fat jar (with the engine
+// resources and the engine native embedded), the game assets and the
+// third-party native shipped as a loose file.
+task dist {
+    group = 'distribution'
+    description = 'Builds the output folder with the runnable fat jar and the game assets.'
+    dependsOn shadowJar
+
+    def outputDir = file('output')
+
+    doLast {
+        // Clear previous contents but keep the folder: on Windows it may be in
+        // use (IDE, Explorer) and removing it would fail.
+        outputDir.mkdirs()
+        outputDir.listFiles()?.each { it.deleteDir() }
+
+        // Fat jar (engine resources and the engine native are embedded inside)
+        copy {
+            from shadowJar.archiveFile
+            into outputDir
+        }
+
+        // Game assets loaded at runtime through relative paths ("game/...")
+        copy {
+            from '../core/assets'
+            into outputDir
+        }
+
+        // Third-party native shipped loose on purpose: it is loaded by its own
+        // System.loadLibrary(...) call, which resolves it from the working
+        // directory (".") without any -Djava.library.path launcher.
+        // Windows: openpl64.dll / Linux: libopenpl64.so
+        copy {
+            from '../core/libs'
+            include openplLibName
+            into outputDir
+        }
+    }
 }

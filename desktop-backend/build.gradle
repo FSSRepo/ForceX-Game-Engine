@@ -3,7 +3,7 @@ apply plugin: "java"
 sourceSets.main.java.srcDirs = ["src"]
 
 jar {
-	archivesBaseName = 'forcex-desktop-backend'
+	archiveBaseName.set('forcex-desktop-backend')
 }
 
 java {

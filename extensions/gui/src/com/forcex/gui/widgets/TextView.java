@@ -23,7 +23,6 @@ public class TextView extends View {
     float text_anim_width;
     ArrayList<TextColorSpan> color_span = new ArrayList<>();
     HashMap<Pattern[], Color> span_text = new HashMap<>();
-    float aspect_ratio = 1f;
     Vector2f anim_step = new Vector2f();
     float deltax = 0.0f;
     private Font font;
@@ -42,12 +41,12 @@ public class TextView extends View {
 
     public TextView(Font font) {
         this.font = font;
-        text_size = 0.035f;
+        text_size = 24f;
+        resolveFont();
         text_alignment = TEXT_ALIGNMENT_CENTER;
         setText("");
         default_color = new Color(Color.BLACK);
         setDebugColor(30, 199, 0);
-        aspect_ratio = FX.gpu.getWidth() / (float) FX.gpu.getHeight();
     }
 
     private void processSpanner() {
@@ -116,12 +115,9 @@ public class TextView extends View {
 
     @Override
     public void onDraw(Drawer drawer) {
-        if (aspect_ratio > 1) {
-            drawer.setScale(text_size, text_size);
-        } else {
-            drawer.setScale(text_size / aspect_ratio, text_size * aspect_ratio);
-
-        }
+        // Los vértices ya se construyen en píxeles: transform identidad.
+        drawer.setScale(1f, 1f);
+        drawer.shader.setFontMode(true);
         if (!animationScroll || (text_anim_width < constraint_width)) {
             drawer.setupBuffer(text_vbo, local);
             drawer.shader.setSpriteColor(color_span.isEmpty() ? default_color : null);
@@ -129,8 +125,9 @@ public class TextView extends View {
             gl.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, text_ibo);
             gl.glDrawElements(GL.GL_TRIANGLES, index_length);
         } else {
-            anim_step.set((local.x - constraint_width) + text_anim_width + deltax, local.y);
-            drawer.scissorArea(local.x, local.y, constraint_width, height);
+            float left = local.x - extent.x;
+            anim_step.set(left + text_anim_width + deltax, local.y);
+            drawer.scissorArea(left, local.y - extent.y, constraint_width, height);
             drawer.setupBuffer(text_vbo, anim_step);
             drawer.shader.setSpriteColor(color_span.isEmpty() ? default_color : null);
             Texture.bind(GL.GL_TEXTURE0, font.font_texture);
@@ -142,9 +139,10 @@ public class TextView extends View {
                 deltax = constraint_width * 2.0f;
             }
         }
+        drawer.shader.setFontMode(false);
         if (debug) {
             setDebugColor(255, 0, 0);
-            drawer.setScale(getWidth(), getHeight());
+            drawer.setScale(extent.x, extent.y);
             drawer.renderLineQuad(local, this.debug_color);
         }
     }
@@ -222,19 +220,25 @@ public class TextView extends View {
         float[] vertices = new float[text_lenght * 28];
         short[] indices = new short[text_lenght * 6];
         index_length = indices.length;
-        float cursorX = 0, cursorY = (num_lines - 1);
+        // text_size es la altura de línea; los glifos se escalan desde el tamaño horneado.
+        float scale = getScale();
+        float cursorY = -num_lines * text_size * 0.5f;
         int offset = 0, index_offset = 0, vertex_offset = 0;
         int text_offset = 0;
         for (String line : lines) {
+            float line_width = getTextWidth(line);
+            float baseline = cursorY + font.getAscent() * scale;
+            float cursorX;
             switch (text_alignment) {
-                case TEXT_ALIGNMENT_CENTER:
-                    cursorX = -getTextWidth(line) * 0.5f;
-                    break;
-                case TEXT_ALIGNMENT_CENTER_RIGHT:
-                    cursorX = (max_line * 0.5f) - getTextWidth(line);
-                    break;
                 case TEXT_ALIGNMENT_CENTER_LEFT:
                     cursorX = max_line * -0.5f;
+                    break;
+                case TEXT_ALIGNMENT_CENTER_RIGHT:
+                    cursorX = (max_line * 0.5f) - line_width;
+                    break;
+                case TEXT_ALIGNMENT_CENTER:
+                default:
+                    cursorX = -line_width * 0.5f;
                     break;
             }
             for (char c : line.toCharArray()) {
@@ -251,54 +255,38 @@ public class TextView extends View {
                     indices[index_offset + 5] = (short) (vertex_offset + 3);
                     vertex_offset += 4;
                     index_offset += 6;
-                    byte row = (byte) ((c - font.startChar) / font.rowPitch);
-                    byte col = (byte) ((c - font.startChar) - (font.rowPitch * row));
-                    float u_start = col * font.columnFactor;
-                    float v_start = row * font.rowFactor;
-                    float u_end = u_start + font.columnFactor;
-                    float v_end = v_start + font.rowFactor;
-                    vertices[offset] = cursorX;
-                    vertices[offset + 1] = cursorY + 1f;
-                    vertices[offset + 2] = u_start;
-                    vertices[offset + 3] = v_start;
-                    vertices[offset + 4] = c_r;
-                    vertices[offset + 5] = c_g;
-                    vertices[offset + 6] = c_b;
-                    offset += 7;
-                    vertices[offset] = cursorX;
-                    vertices[offset + 1] = cursorY - 1f;
-                    vertices[offset + 2] = u_start;
-                    vertices[offset + 3] = v_end;
-                    vertices[offset + 4] = c_r;
-                    vertices[offset + 5] = c_g;
-                    vertices[offset + 6] = c_b;
-                    offset += 7;
-                    vertices[offset] = cursorX + 1f;
-                    vertices[offset + 1] = cursorY + 1f;
-                    vertices[offset + 2] = u_end;
-                    vertices[offset + 3] = v_start;
-                    vertices[offset + 4] = c_r;
-                    vertices[offset + 5] = c_g;
-                    vertices[offset + 6] = c_b;
-                    offset += 7;
-                    vertices[offset] = cursorX + 1f;
-                    vertices[offset + 1] = cursorY - 1f;
-                    vertices[offset + 2] = u_end;
-                    vertices[offset + 3] = v_end;
-                    vertices[offset + 4] = c_r;
-                    vertices[offset + 5] = c_g;
-                    vertices[offset + 6] = c_b;
-                    offset += 7;
+                    Font.Glyph g = font.getGlyph(c);
+                    float x0 = cursorX + g.xoff * scale;
+                    float y0 = baseline + g.yoff * scale;
+                    float x1 = x0 + g.w * scale;
+                    float y1 = y0 + g.h * scale;
+                    // y crece hacia abajo: arriba = v0.
+                    float[][] corners = {
+                        {x0, y0, g.u0, g.v0},
+                        {x0, y1, g.u0, g.v1},
+                        {x1, y0, g.u1, g.v0},
+                        {x1, y1, g.u1, g.v1}
+                    };
+                    for (float[] v : corners) {
+                        vertices[offset] = v[0];
+                        vertices[offset + 1] = v[1];
+                        vertices[offset + 2] = v[2];
+                        vertices[offset + 3] = v[3];
+                        vertices[offset + 4] = c_r;
+                        vertices[offset + 5] = c_g;
+                        vertices[offset + 6] = c_b;
+                        offset += 7;
+                    }
                 }
-                if (text.charAt(text_offset) == c) {
+                if (text_offset < text.length() && text.charAt(text_offset) == c) {
                     text_offset++;
                 }
-                cursorX += font.char_widths[(byte) c & 0xff];
+                cursorX += font.getAdvance(c) * scale;
             }
             if (text_offset < text.length() && text.charAt(text_offset) == '\n') {
                 text_offset++;
             }
-            cursorY -= 2;
+            cursorY += text_size;
         }
         if (text_vbo != -1) {
             FX.gl.glDeleteBuffer(text_vbo);
@@ -307,16 +295,12 @@ public class TextView extends View {
         text_vbo = Drawer.createBuffer(vertices, false, false);
         text_ibo = Drawer.createBuffer(indices, true, false);
         if (!animationScroll) {
-            if (aspect_ratio < 1) {
-                setWidth(max_line * 0.5f * text_size / aspect_ratio);
-            } else {
-                setWidth(max_line * 0.5f * text_size);
-            }
+            setWidth(max_line);
         } else {
             setWidth(constraint_width);
-            text_anim_width = max_line * 0.5f * text_size / aspect_ratio;
+            text_anim_width = max_line;
         }
-        setHeight(num_lines * text_size * (aspect_ratio > 1 ? 1 : aspect_ratio));
+        setHeight(num_lines * text_size);
     }
 
     public boolean isConstraintUse() {
@@ -326,21 +310,17 @@ public class TextView extends View {
     public float getTextWidth(String text) {
         float text_width = 0.0f;
         for (short i = 0; i < text.length(); i++) {
-            text_width += font.char_widths[(byte) text.charAt(i) & 0xff];
+            text_width += font.getAdvance(text.charAt(i)) * getScale();
         }
         return text_width;
     }
 
     public float getTextWidthReal(String text) {
-        float text_width = 0.0f;
-        for (short i = 0; i < text.length(); i++) {
-            text_width += font.char_widths[(byte) text.charAt(i) & 0xff];
-        }
-        return text_width * 0.5f * text_size;
+        return getTextWidth(text);
     }
 
     public float getCharWidth(char c) {
-        return font.char_widths[(byte) c & 0xff] * 0.5f * text_size;
+        return font.getAdvance(c) * getScale();
     }
 
     private Color getColorSpan(int text_offset) {
@@ -352,22 +332,25 @@ public class TextView extends View {
         return color_span.isEmpty() ? new Color(255, 255, 255) : default_color;
     }
 
+    // Usa la instancia rasterizada más cercana al tamaño pedido para mantener la nitidez.
+    private void resolveFont() {
+        if (font != null && text_size > 0f) {
+            font = Font.forSize(font.getPath(), text_size);
+        }
+    }
+
+    private float getScale() {
+        return text_size / font.getLineHeight();
+    }
+
     public float getTextSize() {
         return text_size;
     }
 
     public void setTextSize(float size) {
         text_size = size;
-        if (constraint_width > 0.0f) {
-            updateText();
-        } else {
-            if (aspect_ratio < 1) {
-                setWidth(max_line * 0.5f * text_size / aspect_ratio);
-            } else {
-                setWidth(max_line * 0.5f * text_size);
-            }
-            setHeight(num_lines * text_size);
-        }
+        resolveFont();
+        updateText();
     }
 
     public float getLineMaxWidth(String[] lines) {
@@ -397,6 +380,7 @@ public class TextView extends View {
 
     public void setFont(Font font) {
         this.font = font;
+        resolveFont();
         setText(text);
     }
 

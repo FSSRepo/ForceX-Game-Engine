@@ -43,6 +43,33 @@ public class DesktopGL implements com.forcex.core.GL {
     }
 
     @Override
+    public void glGetInteger(int pname, int[] out, int offset) {
+        // LWJGL does not know how many values each pname returns: a wide buffer
+        // is used to avoid overflows (GL_VIEWPORT writes 4 integers).
+        IntBuffer buf = ByteBuffer.allocateDirect(16 * 4).order(ByteOrder.nativeOrder()).asIntBuffer();
+        GL11.glGetIntegerv(pname, buf);
+        int count = Math.min(out.length - offset, 16);
+        for (int i = 0; i < count; i++) {
+            out[offset + i] = buf.get(i);
+        }
+    }
+
+    @Override
+    public void glGetFloat(int pname, float[] out, int offset) {
+        FloatBuffer buf = ByteBuffer.allocateDirect(16 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        GL11.glGetFloatv(pname, buf);
+        int count = Math.min(out.length - offset, 16);
+        for (int i = 0; i < count; i++) {
+            out[offset + i] = buf.get(i);
+        }
+    }
+
+    @Override
+    public boolean glIsEnabled(int cap) {
+        return GL11.glIsEnabled(cap);
+    }
+
+    @Override
     public void glViewport(int width, int height) {
         GL11.glViewport(0, 0, width, height);
     }
@@ -55,6 +82,16 @@ public class DesktopGL implements com.forcex.core.GL {
     @Override
     public void glClearColor(float red, float green, float blue, float alpha) {
         GL11.glClearColor(red, green, blue, alpha);
+    }
+
+    @Override
+    public void glColorMask(boolean red, boolean green, boolean blue, boolean alpha) {
+        GL11.glColorMask(red, green, blue, alpha);
+    }
+
+    @Override
+    public void glPolygonOffset(float factor, float units) {
+        GL11.glPolygonOffset(factor, units);
     }
 
     @Override
@@ -122,7 +159,7 @@ public class DesktopGL implements com.forcex.core.GL {
     @Override
     public int glGenRenderbuffer() {
        IntBuffer buf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
-        EXTFramebufferObject.glGenFramebuffersEXT(buf);
+        EXTFramebufferObject.glGenRenderbuffersEXT(buf);
         return buf.get(0);
     }
 
@@ -164,12 +201,17 @@ public class DesktopGL implements com.forcex.core.GL {
 
     @Override
     public void glBufferSubData(int target, int size, Buffer data) {
-         if(data instanceof ByteBuffer){
-             GL15.glBufferSubData(target, 0, (ByteBuffer)data);
+        glBufferSubData(target, 0, size, data);
+    }
+
+    @Override
+    public void glBufferSubData(int target, int offset, int length, Buffer data) {
+        if(data instanceof ByteBuffer){
+             GL15.glBufferSubData(target, offset, (ByteBuffer)data);
         }else if(data instanceof FloatBuffer){
-             GL15.glBufferSubData(target, 0, (FloatBuffer)data);
+             GL15.glBufferSubData(target, offset, (FloatBuffer)data);
         }else if(data instanceof ShortBuffer){
-             GL15.glBufferSubData(target, 0, (ShortBuffer)data);
+             GL15.glBufferSubData(target, offset, (ShortBuffer)data);
         }
     }
 
@@ -180,7 +222,12 @@ public class DesktopGL implements com.forcex.core.GL {
 
     @Override
     public void glDrawElements(int mode, int count) {
-        GL11.glDrawElements(mode, count, GL11.GL_UNSIGNED_SHORT, 0);
+        glDrawElements(mode, count, 0);
+    }
+
+    @Override
+    public void glDrawElements(int mode, int count, int offset) {
+        GL11.glDrawElements(mode, count, GL11.GL_UNSIGNED_SHORT, offset);
     }
 
     @Override
@@ -232,6 +279,32 @@ public class DesktopGL implements com.forcex.core.GL {
     public void glTexParameteri(int target, int pname, int param) {
         GL11.glTexParameteri(target, pname, param);
     }
+
+    @Override
+    public void glPixelStorei(int pname, int param) {
+        GL11.glPixelStorei(pname, param);
+    }
+
+    @Override
+    public void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, byte[] data) {
+        ByteBuffer output = ByteBuffer.allocateDirect(data.length).order(ByteOrder.nativeOrder());
+        output.put(data);
+        output.position(0);
+        GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, output);
+    }
+
+    @Override
+    public void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, Buffer data) {
+        if(data instanceof ByteBuffer){
+            GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, (ByteBuffer)data);
+        }else if(data instanceof ShortBuffer){
+            GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, (ShortBuffer)data);
+        }else if(data instanceof IntBuffer){
+            GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, (IntBuffer)data);
+        }else if(data instanceof FloatBuffer){
+            GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, (FloatBuffer)data);
+        }
+    }
     @Override
     public int glGetError() {
          return GL11.glGetError();
@@ -243,7 +316,6 @@ public class DesktopGL implements com.forcex.core.GL {
 		output.position(0);
 		/* OpenGL supports DXT1/DXT5 Textures */
 		if((type == GL_TEXTURE_DXT1 || type == GL_TEXTURE_DXT5) && FX.gpu.hasOGLExtension("GL_EXT_texture_compression_s3tc")){
-                        System.out.println("Detectado");
 			GL13.glCompressedTexImage2D(target,level,type == GL_TEXTURE_DXT1 ? GL_COMPRESSED_RGB_S3TC_DXT1_EXT : GL_COMPRESSED_RGBA_S3TC_DXT5_EXT,width,height,0,output);
                         
 		}
@@ -263,12 +335,9 @@ public class DesktopGL implements com.forcex.core.GL {
     }
 
     @Override
-    public void glTexImage2D(int target, int width, int height, Buffer data) {
-        if(data instanceof ByteBuffer){
-              GL11.glTexImage2D(target, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, (ByteBuffer)data);
-        }else if(data instanceof IntBuffer){
-              GL11.glTexImage2D(target, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, (IntBuffer)data);
-        }
+    public void glTexImage2D(int target, int level, int internalFormat, int width, int height, int format, int type, Buffer data) {
+        ByteBuffer pixels = (ByteBuffer) data;
+        GL11.glTexImage2D(target, level, internalFormat, width, height, 0, format, type, pixels);
     }
 
     @Override
@@ -289,6 +358,16 @@ public class DesktopGL implements com.forcex.core.GL {
     @Override
     public String glGetShaderInfoLog(int shader) {
         return GL20.glGetShaderInfoLog(shader, 2048);
+    }
+
+    @Override
+    public int glGetProgrami(int program, int pname) {
+        return GL20.glGetProgrami(program, pname);
+    }
+
+    @Override
+    public String glGetProgramInfoLog(int program) {
+        return GL20.glGetProgramInfoLog(program, 2048);
     }
 
     @Override

@@ -1,6 +1,8 @@
 package com.forcex.gui;
 
+import com.forcex.FX;
 import com.forcex.math.Maths;
+import com.forcex.utils.Color;
 
 import java.util.ArrayList;
 
@@ -17,8 +19,9 @@ public class Layout extends View {
     public boolean beforeSetting = false, widthCustom = false;
     public boolean usingInSlidePanel = false, finishedAnim = false;
     protected byte orientation;
-    float cursorX = 0.0f, cursorY = 0.0f;
-    private boolean isRelative = false;
+    private boolean isRelative = false, heightCustom = false;
+    private float padding = 0.0f;
+    private Color background;
 
     public Layout(UIContext context) {
         orientation = VERTICAL;
@@ -88,6 +91,21 @@ public class Layout extends View {
         widthCustom = z;
     }
 
+    public void setUseHeightCustom(boolean z) {
+        heightCustom = z;
+    }
+
+    public void setPadding(float padding) {
+        this.padding = padding;
+    }
+
+    public void setBackgroundColor(int r, int g, int b, int a) {
+        if (background == null) {
+            background = new Color();
+        }
+        background.set(r, g, b, a);
+    }
+
     public void setOrientation(byte orientation) {
         this.orientation = orientation;
     }
@@ -110,6 +128,10 @@ public class Layout extends View {
     public void onDraw(Drawer drawer) {
         if (!beforeSetting) {
             settingLayout();
+        }
+        if (background != null) {
+            drawer.setScale(extent.x, extent.y);
+            drawer.renderQuad(local, background, -1);
         }
         for (short i = 0; i < children.size(); i++) {
             View view = children.get(i);
@@ -178,34 +200,26 @@ public class Layout extends View {
     public void predictLayoutDimens() {
         if (isRoot()) {
             if (width_type == FILL_PARENT) {
-                extent.x = 1f;
+                extent.x = FX.gpu.getWidth() * 0.5f;
             } else {
-                if (!widthCustom) {
-                    extent.x = getPredictWidth();
-                } else {
-                    extent.x = width;
-                }
+                extent.x = widthCustom ? width * 0.5f : getPredictWidth() * 0.5f;
             }
             if (height_type == FILL_PARENT) {
-                extent.y = 1f;
+                extent.y = FX.gpu.getHeight() * 0.5f;
             } else {
-                extent.y = getPredictHeight();
+                extent.y = heightCustom ? height * 0.5f : getPredictHeight() * 0.5f;
             }
         } else {
             // only layouts the parent is a layout
             if (width_type != WRAP_CONTENT) {
                 extent.x = parent.extent.x;
             } else {
-                if (!widthCustom) {
-                    extent.x = getPredictWidth();
-                } else {
-                    extent.x = width;
-                }
+                extent.x = widthCustom ? width * 0.5f : getPredictWidth() * 0.5f;
             }
             if (height_type != WRAP_CONTENT) {
                 extent.y = parent.extent.y;
             } else {
-                extent.y = getPredictHeight();
+                extent.y = heightCustom ? height * 0.5f : getPredictHeight() * 0.5f;
             }
         }
     }
@@ -227,21 +241,19 @@ public class Layout extends View {
             view.updateExtent();
             if (view.width_type != WRAP_CONTENT) {
                 view.extent.x = extent.x;
-            } else {
-                view.extent.x = view.width;
             }
             if (view.height_type != WRAP_CONTENT) {
                 view.extent.y = extent.y;
-            } else {
-                view.extent.y = view.height * (view.applyAspectRatio ? context.getAspectRatio() : 1.0f);
             }
         }
     }
 
     public void sortViews() {
         if (children.size() == 0) return;
-        cursorX = local.x - extent.x;
-        cursorY = local.y + extent.y;
+        float left = local.x - extent.x + padding;
+        float top = local.y - extent.y + padding;
+        float cursorX = left;
+        float cursorY = top;
         for (short i = 0; i < children.size(); i++) {
             View view = children.get(i);
             if (view.getVisibility() == View.GONE) continue;
@@ -252,45 +264,27 @@ public class Layout extends View {
                 if (orientation == VERTICAL) {
                     switch (view.alignment) {
                         case CENTER:
-                            view.local.x = cursorX + getExtentWidth();
+                            view.local.x = local.x;
                             break;
                         case RIGHT:
-                            view.local.x = (local.x + extent.x) - view.getExtentWidth() - view.margin_right;
+                            view.local.x = (local.x + extent.x) - padding - view.getExtentWidth() - view.margin_right;
                             break;
                         case LEFT:
-                            view.local.x = cursorX + view.getExtentWidth() + view.margin_left;
+                            view.local.x = left + view.getExtentWidth() + view.margin_left;
                             break;
                     }
                     if (!view.noApplyYConstaint) {
-                        if (view.hasPrevius()) {
-                            View prev = view.previous;
-                            if (prev.noApplyYConstaint || prev.getVisibility() == View.GONE) {
-                                prev = getPrevius(i);
-                                if (prev != null) {
-                                    cursorY -= prev.margin_bottom + prev.getExtentHeight();
-                                }
-                            } else {
-                                cursorY -= prev.margin_bottom + prev.getExtentHeight();
-                            }
-                        }
-                        cursorY -= (view.margin_top + view.getExtentHeight());
+                        cursorY += view.margin_top + view.getExtentHeight();
+                        view.local.y = cursorY;
+                        cursorY += view.getExtentHeight() + view.margin_bottom;
+                    } else {
+                        view.local.y = cursorY;
                     }
-                    view.local.y = cursorY;
                 } else {
-                    if (view.hasPrevius()) {
-                        View prev = view.previous;
-                        if (prev.getVisibility() == View.GONE) {
-                            prev = getPrevius(i);
-                            if (prev != null) {
-                                cursorX += prev.margin_right + prev.getExtentWidth();
-                            }
-                        } else {
-                            cursorX += prev.margin_right + prev.getExtentWidth();
-                        }
-                    }
                     cursorX += view.margin_left + view.getExtentWidth();
                     view.local.x = cursorX;
-                    view.local.y = cursorY - view.margin_top - view.getExtentHeight();
+                    cursorX += view.getExtentWidth() + view.margin_right;
+                    view.local.y = top + view.margin_top + view.getExtentHeight();
                 }
             } else {
                 view.local.x = local.x + view.relative.x;
@@ -299,78 +293,50 @@ public class Layout extends View {
         }
     }
 
-    private View getPrevius(short index) {
-        for (short i = (short) (index - 1); i >= 0; i--) {
-            View v = children.get(i);
-            if (v.getVisibility() != View.GONE && !v.noApplyYConstaint) {
-                return v;
-            }
-        }
-        return null;
-    }
-
     public float getPredictWidth() {
         float predicted_width = 0.0f;
         for (View view : children) {
             if (view.getVisibility() == View.GONE) continue;
             if (!isRelative) {
                 if (orientation == VERTICAL) {
-                    if (predicted_width < view.extent.x) {
-                        predicted_width = view.extent.x + view.margin_right * 0.5f + view.margin_left * 0.5f;
+                    float width = view.getExtentWidth() * 2f + view.margin_left + view.margin_right;
+                    if (predicted_width < width) {
+                        predicted_width = width;
                     }
                 } else {
-                    if (view.hasPrevius() && view.previous.getVisibility() != View.GONE) {
-                        View prev = view.previous;
-                        predicted_width += prev.margin_right * 0.5f;
-                    }
-                    predicted_width += view.margin_left * 0.5f + view.getExtentWidth();
+                    predicted_width += view.margin_left + view.getExtentWidth() * 2f + view.margin_right;
                 }
             } else {
-                float test = Maths.abs(view.relative.x + view.getExtentWidth());
+                float test = (Maths.abs(view.relative.x) + view.getExtentWidth()) * 2f;
                 if (predicted_width < test) {
                     predicted_width = test;
                 }
             }
         }
-        return predicted_width;
+        return predicted_width + padding * 2f;
     }
 
     public float getPredictHeight() {
         float predicted_height = 0.0f;
-        for (short i = 0; i < children.size(); i++) {
-            View view = children.get(i);
-            if (
-                    view.getVisibility() == View.GONE || view.noApplyYConstaint) continue;
+        for (View view : children) {
+            if (view.getVisibility() == View.GONE || view.noApplyYConstaint) continue;
             if (!isRelative) {
                 if (orientation == VERTICAL) {
-                    if (!view.noApplyYConstaint) {
-                        if (view.hasPrevius()) {
-                            View prev = view.previous;
-                            if (prev.noApplyYConstaint || prev.getVisibility() == View.GONE) {
-                                prev = getPrevius(i);
-                                if (prev != null) {
-                                    predicted_height += prev.margin_bottom * 0.5f;
-                                }
-                            } else {
-                                predicted_height += prev.margin_bottom * 0.5f;
-                            }
-                        }
-                        predicted_height += view.margin_top * 0.5f + view.getExtentHeight();
-                    }
+                    predicted_height += view.margin_top + view.getExtentHeight() * 2f + view.margin_bottom;
                 } else {
-                    float test = view.margin_top * 0.5f + view.getExtentHeight() + view.margin_bottom * 0.5f;
+                    float test = view.margin_top + view.getExtentHeight() * 2f + view.margin_bottom;
                     if (predicted_height < test) {
                         predicted_height = test;
                     }
                 }
             } else {
-                float test = Maths.abs(view.relative.y + view.getExtentHeight());
+                float test = (Maths.abs(view.relative.y) + view.getExtentHeight()) * 2f;
                 if (predicted_height < test) {
                     predicted_height = test;
                 }
             }
         }
-        return predicted_height;
+        return predicted_height + padding * 2f;
     }
 
     public View findViewByID(int id) {

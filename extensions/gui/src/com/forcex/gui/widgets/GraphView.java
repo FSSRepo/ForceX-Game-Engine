@@ -52,13 +52,13 @@ public class GraphView extends View {
     private void update() {
         float[] vertices = new float[data_samples.length * 7];
         float rate = extent.x / (data_samples.length * 0.5f);
-        float dy = -extent.y;
+        float dy = extent.y;
         float dx = -extent.x;
         float length = extent.y * 2.0f;
         for (short i = 0; i < data_samples.length; i++) {
             if (i < time_lapse_current) {
                 vertices[i * 7] = dx;
-                vertices[i * 7 + 1] = dy + (data_samples[i] * length);
+                vertices[i * 7 + 1] = dy - (data_samples[i] * length);
                 vertices[i * 7 + 2] = 0;
                 vertices[i * 7 + 3] = 0;
                 vertices[i * 7 + 4] = 1;

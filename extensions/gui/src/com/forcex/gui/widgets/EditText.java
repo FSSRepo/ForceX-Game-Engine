@@ -2,6 +2,8 @@ package com.forcex.gui.widgets;
 
 import com.forcex.FX;
 import com.forcex.app.EventType;
+import com.forcex.app.Key;
+import com.forcex.core.SystemDevice;
 import com.forcex.gui.Drawer;
 import com.forcex.gui.UIContext;
 import com.forcex.gui.View;
@@ -9,7 +11,7 @@ import com.forcex.math.Vector2f;
 import com.forcex.utils.Color;
 import com.forcex.utils.GameUtils;
 
-public class EditText extends View {
+public class EditText extends View implements SystemDevice.OnTextInputListener {
     int cursorCharLine = 0, cursorLine = 0;
     Color background;
     float cursor_fade = 0.0f;
@@ -18,9 +20,11 @@ public class EditText extends View {
     private boolean using = false,
             only_numbers = false,
             password = false,
-            only_one_line = false;
+            only_one_line = false,
+            shift = false,
+            capital = false,
+            input_requested = false;
     private TextView textview;
-    private KeyBoard keyboard = null;
     private Color edge_color;
 	private final Color text_color;
     private String text, process;
@@ -34,10 +38,11 @@ public class EditText extends View {
     private boolean useEdge = true;
 
     public EditText(UIContext ctx) {
-        this(ctx, 0.1f, 0.05f, 0.05f);
+        this(ctx, FX.gpu.getWidth() * 0.05f, FX.gpu.getHeight() * 0.025f, FX.gpu.getHeight() * 0.025f);
     }
 
     public EditText(UIContext context, float width, float height, float text_size) {
+        this.context = context;
         setWidth(width);
         setHeight(height);
         text = "";
@@ -102,13 +107,11 @@ public class EditText extends View {
         textview.addFilter(new Color(r, g, b), data);
     }
 
-    public void detachKeyBoard() {
-        if (keyboard != null) {
-            keyboard.solveHideView();
-            keyboard.showKeyBoard = false;
-            keyboard.setOnKeyBoardListener(null);
-            keyboard = null;
-            using = false;
+    public void clearFocus() {
+        using = false;
+        input_requested = false;
+        if (context != null && context.getFocusedEditText() == this) {
+            context.setFocusedEditText(null);
         }
     }
 
@@ -147,12 +150,6 @@ public class EditText extends View {
         return text.length() == 0;
     }
 
-    @Override
-    public void updateExtent() {
-        extent.x = width;
-        extent.y = height;
-    }
-
     public void setTextColor(int r, int g, int b) {
         text_color.set(r, g, b);
     }
@@ -178,27 +175,29 @@ public class EditText extends View {
         usingThisEditText(using);
         drawer.setScale(extent.x, extent.y);
         drawer.renderQuad(local, background, -1);
-        float dy = (local.y + extent.y) - textview.getTextSize();
+        float dx = local.x - extent.x;
+        float dy = local.y - extent.y;
         if (hint.length() > 0 && text.length() == 0) {
             textview.setText(hint);
-            textview.local.set((local.x - extent.x) + textview.getWidth(), dy);
+            textview.local.set(dx + textview.getWidth() * 0.5f, dy + textview.getHeight() * 0.5f);
             textview.setTextColor(128, 128, 128);
             textview.onDraw(drawer);
         } else {
             textview.local.set(
-                    local.x - (extent.x - textview.getWidth()),
-                    dy -
-                            (num_lines - 1) * textview.getTextSize());
+                    dx + textview.getWidth() * 0.5f,
+                    dy + textview.getHeight() * 0.5f);
             textview.setTextColor(text_color.r, text_color.g, text_color.b);
             textview.onDraw(drawer);
             if (cursor_fade < 0.5f && using) {
+                float line_y = dy + cursorLine * textview.getTextSize() + textview.getTextSize() * 0.5f;
                 if (cursor_style == 1) {
-                    cursor.set((local.x - extent.x) + getXCursor() * 2f, dy - (cursorLine * textview.getTextSize() * 2f));
-                    drawer.setTransform(90.0f, 1, textview.getTextSize());
+                    cursor.set(dx + getXCursor(), line_y);
+                    drawer.setTransform(90.0f, 1, textview.getTextSize() * 0.5f);
                     FX.gl.glLineWidth(2f);
                     drawer.renderLine(cursor, textview.getTextColor());
                 } else if (cursor_style == 2) {
-                    cursor.set((local.x - extent.x) + getXCursor() * 2f + textview.getTextWidthReal("_"), dy - (cursorLine * textview.getTextSize() * 2f) - textview.getTextSize() * 0.8f);
+                    cursor.set(dx + getXCursor() + textview.getTextWidthReal("_"),
+                            dy + (cursorLine + 1) * textview.getTextSize() - textview.getTextSize() * 0.1f);
                     drawer.setScale(textview.getTextWidthReal("_"), 1f);
                     FX.gl.glLineWidth(3f);
                     drawer.renderLine(cursor, textview.getTextColor());
@@ -215,7 +214,7 @@ public class EditText extends View {
         }
         if (auto_focus) {
             using = true;
-            callKeyBoard();
+            callInput();
             auto_focus = false;
         }
     }
@@ -250,14 +249,14 @@ public class EditText extends View {
             for (short i = 0; i < text.length(); i++) {
                 char test = text.charAt(i);
                 if (test != '\n') {
-                    width += textview.getFont().char_widths[test & 0xff] * 0.5f * textview.getTextSize();
+                    width += textview.getCharWidth(test);
                     if (width < getWidth()) {
                         process += test;
                         current_char++;
                     } else if (line_offset < lines_max) {
                         process += "\n" + test;
                         current_char++;
-                        width = textview.getFont().char_widths[test & 0xff] * 0.5f * textview.getTextSize();
+                        width = textview.getCharWidth(test);
                         if (setting && current_char == cursorCharLine && current_line == cursorLine) {
                             cursorLine++;
                             cursorCharLine = 1;
@@ -308,37 +307,29 @@ public class EditText extends View {
     public void onTouch(float x, float y, byte type) {
         if (type == EventType.TOUCH_PRESSED) {
             if (using) {
-                float iy = (1f - (((y - local.y) / extent.y) * 0.5f + 0.5f)) * extent.y;
+                float iy = y - (local.y - extent.y);
                 cursorLine = (int) (iy / textview.getTextSize());
-                if (cursorLine < lines.length) {
-                    float ix = x - local.x;
-                    float offset = -extent.x;
+                if (cursorLine < lines.length && cursorLine >= 0) {
+                    float ix = x - (local.x - extent.x);
                     String current_line = lines[cursorLine];
-                    if (ix > offset + textview.getTextWidthReal(current_line) * 2f) {
+                    if (ix > textview.getTextWidthReal(current_line)) {
                         cursorCharLine = current_line.length();
                         return;
                     }
+                    float offset = 0;
                     for (byte i = 0; i < current_line.length(); i++) {
-                        float char_width0 = textview.getCharWidth(password ? '*' : current_line.charAt(i));
-                        float char_width1 = 0;
-                        if (i + 1 < current_line.length()) {
-                            char_width1 = textview.getCharWidth(password ? '*' : current_line.charAt(i + 1));
+                        float char_width = textview.getCharWidth(password ? '*' : current_line.charAt(i));
+                        if (ix < offset + char_width) {
+                            cursorCharLine = i;
+                            break;
                         }
-                        if (i == 0 && ix < offset + char_width0) {
-                            cursorCharLine = 0;
-                        } else if (
-                                char_width1 > 0 &&
-                                        ix > offset + char_width0 &&
-                                        ix < offset + (char_width0 * 2f) + char_width1) {
-                            cursorCharLine = i + 1;
-                        }
-                        offset += char_width0 * 2f;
+                        offset += char_width;
                     }
                 }
                 return;
             }
             using = true;
-            callKeyBoard();
+            callInput();
         }
     }
 
@@ -369,24 +360,17 @@ public class EditText extends View {
 
     @Override
     protected void notifyTouchOutside(float x, float y, byte type) {
-        if (!(keyboard != null && keyboard.testTouch(x, y))) {
-            using = false;
-            detachKeyBoard();
-        }
-    }
-
-    public KeyBoard getKeyboard() {
-        return keyboard;
+        clearFocus();
     }
 
     @Override
     protected boolean testTouch(float x, float y) {
-        return isVisible() && GameUtils.testRect(x, y, local, extent.x, extent.y) || (keyboard != null && keyboard.testTouch(x, y));
+        return isVisible() && GameUtils.testRect(x, y, local, extent.x, extent.y);
     }
 
     @Override
     public void onDestroy() {
-        detachKeyBoard();
+        clearFocus();
         textview.onDestroy();
         textview = null;
         lt = null;
@@ -395,124 +379,182 @@ public class EditText extends View {
         edge_color = null;
     }
 
-    private void callKeyBoard() {
-        if (keyboard == null) {
-            keyboard = KeyBoard.instance;
-            if (keyboard.ref != this && keyboard.ref != null) {
-                keyboard.ref.detachKeyBoard();
-                keyboard.ref.using = false;
+    private void callInput() {
+        if (FX.device == null) {
+            return;
+        }
+        if (!FX.device.isJDKDesktop()) {
+            // Android: se usa el input nativo (diálogo con EditText del sistema).
+            if (input_requested) {
+                return;
             }
-            keyboard.ref = this;
-            if (keyboard.solveShowView()) {
-                keyboard.showKeyBoard = true;
-                keyboard.keyboardNumber = only_numbers;
-                keyboard.setOnKeyBoardListener(new KeyBoard.onKeyBoardListener() {
-                    @Override
-                    public void onBackspace() {
-                        if (text.length() > 0) {
-                            if ((cursorLine == 0 && cursorCharLine == 0)) {
-                                return;
-                            }
-                            int cursor = getRealCursor();
-                            if (cursor == text.length()) {
-                                if (cursorCharLine == 0 && cursorLine > 0) {
-                                    cursorLine--;
-                                    if (text.charAt(cursor - 1) != '\n') {
-                                        cursorCharLine = lines[cursorLine].length() - 1;
-                                    } else {
-                                        cursorCharLine = lines[cursorLine].length();
-                                    }
-                                } else {
-                                    cursorCharLine--;
-                                }
-                                text = text.substring(0, text.length() - 1);
-                            } else {
-                                if (cursor > 0) {
-                                    text = text.substring(0, cursor - 1) + text.substring(cursor);
-                                    if (cursorCharLine == 0 && cursorLine > 0) {
-                                        cursorLine--;
-                                        cursorCharLine = lines[cursorLine].length();
-                                    } else {
-                                        cursorCharLine--;
-                                    }
-                                } else {
-                                    text = text.substring(0, cursor - 1) + text.substring(cursor);
-                                }
-                            }
-                            updateTextView();
-                            processChange(true);
-                        }
-                    }
+            input_requested = true;
+            FX.device.requestTextInput(text, hint, only_numbers, password, this);
+        } else if (context != null) {
+            // Escritorio: las teclas físicas llegan por UIContext.onKeyEvent.
+            context.setFocusedEditText(this);
+        }
+    }
 
-                    @Override
-                    public void onEnter() {
-                        if (!only_one_line) {
-                            if (cursorLine + 1 < lines_max) {
-                                int cursor = getRealCursor();
-                                if (cursor > 0) {
-                                    if (cursor > text.length()) {
-                                        if (only_one_line) {
-                                            cursorCharLine = text.length();
-                                        } else {
-                                            cursorLine = num_lines - 1;
-                                            cursorCharLine = lines[cursorLine].length();
-                                        }
-                                        cursor = getRealCursor();
-                                    }
-                                    text = text.substring(0, cursor) + "\n" + text.substring(cursor);
-                                } else {
-                                    if (text.length() == 0) {
-                                        text += "\n";
-                                    } else {
-                                        text = "\n" + text.substring(cursor);
-                                    }
-                                }
-                                cursorLine++;
-                                cursorCharLine = 0;
-                            }
-                            updateTextView();
-                            processChange(false);
+    @Override
+    public void onTextInput(String value) {
+        input_requested = false;
+        if (value == null) {
+            using = false;
+            return;
+        }
+        if (!value.equals(text)) {
+            setText(value);
+            processChange(false);
+        }
+        // Aceptar en el diálogo nativo equivale a pulsar Enter en el teclado virtual.
+        processEnter();
+    }
+
+    /**
+     * Procesa una tecla física del escritorio.
+     *
+     * @return {@code true} si el evento fue consumido por este campo.
+     */
+    public boolean onKeyEvent(byte key, boolean down) {
+        if (!using) {
+            return false;
+        }
+        if (key == Key.KEY_LEFT_SHIFT || key == Key.KEY_RIGHT_SHIFT) {
+            shift = down;
+            return true;
+        }
+        if (!down) {
+            return true;
+        }
+        switch (key) {
+            case Key.KEY_CAPITAL:
+                capital = !capital;
+                break;
+            case Key.KEY_DEL:
+                onBackspace();
+                break;
+            case Key.KEY_ENTER:
+                onEnter();
+                break;
+            case Key.KEY_SPACE:
+                onKeyDown(' ');
+                break;
+            case Key.KEY_DOT:
+                onKeyDown('.');
+                break;
+            case Key.KEY_MINUS:
+                onKeyDown('-');
+                break;
+            default:
+                if (key >= Key.A_KEY && key <= Key.Z_KEY) {
+                    onKeyDown(Key.toKeyChar(key, capital || shift));
+                } else if (key >= Key.KEY_0 && key <= Key.KEY_9) {
+                    onKeyDown(Key.toKeyChar(key, false));
+                }
+                break;
+        }
+        return true;
+    }
+
+    private void onBackspace() {
+        if (text.length() > 0) {
+            if ((cursorLine == 0 && cursorCharLine == 0)) {
+                return;
+            }
+            int cursor = getRealCursor();
+            if (cursor == text.length()) {
+                if (cursorCharLine == 0 && cursorLine > 0) {
+                    cursorLine--;
+                    if (text.charAt(cursor - 1) != '\n') {
+                        cursorCharLine = lines[cursorLine].length() - 1;
+                    } else {
+                        cursorCharLine = lines[cursorLine].length();
+                    }
+                } else {
+                    cursorCharLine--;
+                }
+                text = text.substring(0, text.length() - 1);
+            } else {
+                if (cursor > 0) {
+                    text = text.substring(0, cursor - 1) + text.substring(cursor);
+                    if (cursorCharLine == 0 && cursorLine > 0) {
+                        cursorLine--;
+                        cursorCharLine = lines[cursorLine].length();
+                    } else {
+                        cursorCharLine--;
+                    }
+                } else {
+                    text = text.substring(0, cursor - 1) + text.substring(cursor);
+                }
+            }
+            updateTextView();
+            processChange(true);
+        }
+    }
+
+    private void onEnter() {
+        if (!only_one_line) {
+            if (cursorLine + 1 < lines_max) {
+                int cursor = getRealCursor();
+                if (cursor > 0) {
+                    if (cursor > text.length()) {
+                        if (only_one_line) {
+                            cursorCharLine = text.length();
                         } else {
-                            processEnter();
+                            cursorLine = num_lines - 1;
+                            cursorCharLine = lines[cursorLine].length();
                         }
+                        cursor = getRealCursor();
                     }
-
-                    @Override
-                    public void onKeyDown(char key) {
-                        if (only_numbers) {
-                            if (key == '.' && text.contains(".") || key == '-' && text.contains("-")) {
-                                return;
-                            }
-                        }
-                        if (!((cursorLine + 1 == lines_max) && cursorLine < lines.length && textview.getTextWidthReal(lines[cursorLine] + key) > getWidth())) {
-                            int cursor = getRealCursor();
-                            if (cursor > 0) {
-                                if (cursor > text.length()) {
-                                    if (only_one_line) {
-                                        cursorCharLine = text.length();
-                                    } else {
-                                        cursorLine = num_lines - 1;
-                                        cursorCharLine = lines[cursorLine].length();
-                                    }
-                                    cursor = getRealCursor();
-                                }
-                                text = text.substring(0, cursor) + key + text.substring(cursor);
-                            } else {
-                                if (text.length() == 0) {
-                                    text += key;
-                                } else {
-                                    text = key + text.substring(cursor);
-                                }
-                            }
-                            cursorCharLine++;
-                        }
-                        updateTextView();
-                        processChange(false);
+                    text = text.substring(0, cursor) + "\n" + text.substring(cursor);
+                } else {
+                    if (text.length() == 0) {
+                        text += "\n";
+                    } else {
+                        text = "\n" + text.substring(cursor);
                     }
+                }
+                cursorLine++;
+                cursorCharLine = 0;
+            }
+            updateTextView();
+            processChange(false);
+        } else {
+            processEnter();
+        }
+    }
 
-                });
+    private void onKeyDown(char key) {
+        if (only_numbers) {
+            if (key == '.' && text.contains(".") || key == '-' && text.contains("-")) {
+                return;
             }
         }
+        if (!((cursorLine + 1 == lines_max) && cursorLine < lines.length && textview.getTextWidthReal(lines[cursorLine] + key) > getWidth())) {
+            int cursor = getRealCursor();
+            if (cursor > 0) {
+                if (cursor > text.length()) {
+                    if (only_one_line) {
+                        cursorCharLine = text.length();
+                    } else {
+                        cursorLine = num_lines - 1;
+                        cursorCharLine = lines[cursorLine].length();
+                    }
+                    cursor = getRealCursor();
+                }
+                text = text.substring(0, cursor) + key + text.substring(cursor);
+            } else {
+                if (text.length() == 0) {
+                    text += key;
+                } else {
+                    text = key + text.substring(cursor);
+                }
+            }
+            cursorCharLine++;
+        }
+        updateTextView();
+        processChange(false);
     }
 
     private void processChange(boolean del) {
@@ -525,8 +567,7 @@ public class EditText extends View {
         if (lt != null) {
             lt.onEnter(this, text);
         }
-        using = false;
-        detachKeyBoard();
+        clearFocus();
     }
 
     public interface onEditTextListener {

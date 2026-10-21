@@ -1,0 +1,64 @@
+<rml>
+<head>
+    <title>ForceX RmlUi Showcase</title>
+    <link type="text/rcss" href="rml/main.rcss" />
+</head>
+<body>
+    <div id="topbar">
+        <div id="brand">
+            <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38">
+                <path d="M19 2 L35 11 L35 27 L19 36 L3 27 L3 11 Z" fill="#67e8f9" />
+                <path d="M11 25 L19 10 L27 25 M14 21 H24" fill="none" stroke="#082f49" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <div>
+                <div id="brand-title">FORCEX</div>
+                <div id="brand-caption">RMLUI INTERFACE MODULE</div>
+            </div>
+        </div>
+        <div id="status-pill"><span id="status-dot"></span> ENGINE ONLINE</div>
+    </div>
+
+    <div id="hero">
+        <div id="hero-copy">
+            <div id="eyebrow">NATIVE GAME UI · HTML + CSS</div>
+            <h1>Build worlds.<br/><span>Tell stories.</span></h1>
+            <p id="description">A compact showcase of RmlUi rendered directly in ForceX's active OpenGL context, with vector graphics and a live Lottie animation.</p>
+            <div id="actions">
+                <button id="play">LAUNCH DEMO <span>&gt;</span></button>
+                <button id="quit">CLOSE</button>
+            </div>
+            <div id="status">Ready — click Launch Demo or press a key.</div>
+        </div>
+        <div id="visual-card">
+            <div id="card-label">LIVE VECTOR ANIMATION</div>
+            <lottie id="mountain" src="rml/a_mountain.json"></lottie>
+            <div id="card-footer"><span>BODYMOVIN JSON</span><span>SVG PLUGIN ENABLED</span></div>
+        </div>
+    </div>
+
+    <div id="bottomline">
+        <span>FORCEX GAME ENGINE</span>
+        <span>FREETYPE · LUNASVG · RLOTTIE</span>
+        <span>CLICK / TOUCH TO INTERACT</span>
+    </div>
+
+    <div id="glass-modal" class="glass-modal">
+        <div id="glass-scrim" class="glass-scrim"></div>
+        <div id="glass-card" class="glass-card">
+            <div id="glass-eyebrow">BACKDROP-FILTER · GLASS SURFACE</div>
+            <h2 id="glass-title">Rendered in-engine.</h2>
+            <p id="glass-copy">This panel is not a bitmap: the backdrop is blurred by the FxRenderInterface
+                layer stack, then composited with premultiplied alpha, border highlights and an inset shadow.</p>
+            <div id="glass-actions">
+                <button id="modal-confirm">CONTINUE</button>
+                <button id="modal-close">CLOSE</button>
+            </div>
+            <div id="glass-footer">
+                <span>blur(18px)</span>
+                <span>saturate(150%)</span>
+                <span>RGBA 8-bit layers</span>
+            </div>
+        </div>
+    </div>
+</body>
+</rml>

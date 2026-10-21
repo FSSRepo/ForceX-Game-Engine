@@ -1,0 +1,301 @@
+/* RmlUi: el alfa de rgba() va de 0 a 255 (o en %), no de 0 a 1: rgba(18, 40, 62, 148) = 58 %. */
+body {
+    display: block;
+    box-sizing: border-box;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    padding: 34dp 58dp 25dp 58dp;
+    background-color: #08111f;
+    decorator: radial-gradient(circle at 82% 6%, rgba(103, 232, 249, 31) 0%, transparent 58%),
+               linear-gradient(180deg, #08111f 0%, #0a1628 100%);
+    color: #e7f0fb;
+    font-family: LatoLatin;
+    overflow: hidden;
+}
+
+#topbar {
+    height: 52dp;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+#brand {
+    display: flex;
+    align-items: center;
+}
+
+#brand div {
+    display: block;
+}
+
+#brand svg {
+    width: 38dp;
+    height: 38dp;
+    margin-right: 12dp;
+    filter: drop-shadow(rgba(103, 232, 249, 89) 0dp 6dp 14dp);
+}
+
+#brand-title {
+    color: #e7f0fb;
+    font-size: 18dp;
+    font-weight: bold;
+    letter-spacing: 2dp;
+}
+
+#brand-caption {
+    color: #7890aa;
+    font-size: 9dp;
+    letter-spacing: 1dp;
+    margin-top: 3dp;
+}
+
+#status-pill {
+    display: block;
+    color: #b8cadb;
+    background-color: #122238;
+    border: 1dp #203a55;
+    border-radius: 16dp;
+    padding: 7dp 13dp;
+    font-size: 10dp;
+    letter-spacing: 1dp;
+}
+
+#status-dot {
+    display: inline-block;
+    vertical-align: middle;
+    width: 7dp;
+    height: 7dp;
+    margin-right: 7dp;
+    border-radius: 4dp;
+    background-color: #44e1ad;
+}
+
+#hero {
+    display: flex;
+    width: 100%;
+    height: 76%;
+    margin-top: 28dp;
+    align-items: center;
+}
+
+#hero-copy {
+    width: 56%;
+    padding-right: 36dp;
+}
+
+#eyebrow {
+    color: #67e8f9;
+    font-size: 11dp;
+    letter-spacing: 2dp;
+    margin-bottom: 18dp;
+}
+
+h1 {
+    display: block;
+    color: #f2f7ff;
+    font-size: 54dp;
+    line-height: 1.08;
+    font-weight: bold;
+    margin: 0 0 17dp 0;
+}
+
+h1 span {
+    color: #67e8f9;
+}
+
+#description {
+    display: block;
+    width: 90%;
+    color: #9db1c7;
+    font-size: 15dp;
+    line-height: 1.55;
+    margin-bottom: 24dp;
+}
+
+#actions {
+    display: flex;
+    align-items: center;
+}
+
+button {
+    display: block;
+    text-align: center;
+    line-height: 45dp;
+    height: 45dp;
+    border-radius: 5dp;
+    font-family: LatoLatin;
+    font-size: 11dp;
+    letter-spacing: 1dp;
+}
+
+#play {
+    width: 180dp;
+    color: #06202b;
+    background-color: #67e8f9;
+    decorator: linear-gradient(90deg, #67e8f9 0%, #44e1ad 100%);
+    font-weight: bold;
+    box-shadow: 0 10dp 24dp rgba(68, 225, 173, 71);
+}
+
+#play span {
+    margin-left: 15dp;
+    font-size: 15dp;
+}
+
+#quit {
+    width: 94dp;
+    margin-left: 11dp;
+    color: #cad7e5;
+    background-color: #13243a;
+    border: 1dp #2c4057;
+}
+
+#status {
+    display: block;
+    color: #70ddb2;
+    font-size: 12dp;
+    margin-top: 18dp;
+}
+
+#visual-card {
+    width: 39%;
+    height: 82%;
+    padding: 20dp;
+    background-color: #101f32;
+    border: 1dp #263f59;
+    border-radius: 12dp;
+    box-shadow: 0 24dp 60dp rgba(0, 0, 0, 140), inset 0 0 46dp rgba(103, 232, 249, 20);
+}
+
+#card-label {
+    color: #9cb2c9;
+    font-size: 10dp;
+    letter-spacing: 1.5dp;
+}
+
+#mountain {
+    display: block;
+    width: 100%;
+    height: 80%;
+    margin-top: 9dp;
+}
+
+#card-footer {
+    display: flex;
+    justify-content: space-between;
+    color: #69829b;
+    font-size: 8dp;
+    letter-spacing: 1dp;
+}
+
+#bottomline {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    color: #536b83;
+    font-size: 9dp;
+    letter-spacing: 1dp;
+    margin-top: 18dp;
+    opacity: 0.85;
+}
+
+/* ---------------------------------------------------------------------------
+   Modal "glass": capa con backdrop-filter (blur + saturate) compuesta por el
+   renderer sobre el contenido ya dibujado de la UI.
+   --------------------------------------------------------------------------- */
+
+.glass-modal {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 30;
+}
+
+.glass-modal.is-open {
+    display: flex;
+}
+
+.glass-scrim {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(4, 10, 18, 82);
+    backdrop-filter: blur(14dp) saturate(120%);
+}
+
+.glass-card {
+    position: relative;
+    width: 470dp;
+    padding: 30dp;
+    border-radius: 18dp;
+    background-color: rgba(18, 40, 62, 148);
+    border: 1dp rgba(150, 225, 255, 76);
+    box-shadow: 0 30dp 90dp rgba(0, 0, 0, 140),
+                inset 0 1dp 0 rgba(255, 255, 255, 51),
+                inset 0 0 60dp rgba(103, 232, 249, 15);
+    backdrop-filter: blur(18dp) saturate(150%);
+}
+
+#glass-eyebrow {
+    display: block;
+    color: #67e8f9;
+    font-size: 9dp;
+    letter-spacing: 2dp;
+    margin-bottom: 14dp;
+}
+
+#glass-title {
+    display: block;
+    color: #f2f7ff;
+    font-size: 30dp;
+    font-weight: bold;
+    margin: 0 0 12dp 0;
+}
+
+#glass-copy {
+    display: block;
+    color: #b9cadb;
+    font-size: 13dp;
+    line-height: 1.55;
+    margin-bottom: 22dp;
+}
+
+#glass-actions {
+    display: flex;
+    align-items: center;
+}
+
+#modal-confirm {
+    width: 140dp;
+    color: #06202b;
+    background-color: #67e8f9;
+    decorator: linear-gradient(90deg, #67e8f9 0%, #44e1ad 100%);
+    font-weight: bold;
+}
+
+#modal-close {
+    width: 94dp;
+    margin-left: 11dp;
+    color: #cad7e5;
+    background-color: rgba(16, 36, 56, 217);
+    border: 1dp rgba(140, 190, 220, 89);
+}
+
+#glass-footer {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    color: #7fa6c0;
+    font-size: 8dp;
+    letter-spacing: 1dp;
+    margin-top: 22dp;
+}

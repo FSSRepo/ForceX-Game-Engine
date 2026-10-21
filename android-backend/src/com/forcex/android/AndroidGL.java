@@ -80,6 +80,24 @@ public class AndroidGL implements GL {
 	}
 
 	@Override
+	public void glGetInteger(int pname, int[] out, int offset)
+	{
+		GLES20.glGetIntegerv(pname, out, offset);
+	}
+
+	@Override
+	public void glGetFloat(int pname, float[] out, int offset)
+	{
+		GLES20.glGetFloatv(pname, out, offset);
+	}
+
+	@Override
+	public boolean glIsEnabled(int cap)
+	{
+		return GLES20.glIsEnabled(cap);
+	}
+
+	@Override
 	public void glViewport(int width, int height)
 	{
 		GLES20.glViewport(0, 0, width, height);
@@ -95,6 +113,18 @@ public class AndroidGL implements GL {
 	public void glClearColor(float red, float green, float blue, float alpha)
 	{
 		GLES20.glClearColor(red, green, blue, alpha);
+	}
+
+	@Override
+	public void glColorMask(boolean red, boolean green, boolean blue, boolean alpha)
+	{
+		GLES20.glColorMask(red, green, blue, alpha);
+	}
+
+	@Override
+	public void glPolygonOffset(float factor, float units)
+	{
+		GLES20.glPolygonOffset(factor, units);
 	}
 
 	@Override
@@ -225,7 +255,13 @@ public class AndroidGL implements GL {
 	@Override
 	public void glBufferSubData(int target, int size, Buffer data)
 	{
-		GLES20.glBufferSubData(target, 0, size, data);
+		glBufferSubData(target, 0, size, data);
+	}
+
+	@Override
+	public void glBufferSubData(int target, int offset, int length, Buffer data)
+	{
+		GLES20.glBufferSubData(target, offset, length, data);
 	}
 
 	@Override
@@ -237,7 +273,13 @@ public class AndroidGL implements GL {
 	@Override
 	public void glDrawElements(int mode, int count)
 	{
-		GLES20.glDrawElements(mode, count, GL_UNSIGNED_SHORT, 0);
+		glDrawElements(mode, count, 0);
+	}
+
+	@Override
+	public void glDrawElements(int mode, int count, int offset)
+	{
+		GLES20.glDrawElements(mode, count, GL_UNSIGNED_SHORT, offset);
 	}
 
 	@Override
@@ -291,6 +333,27 @@ public class AndroidGL implements GL {
 	}
 
 	@Override
+	public void glPixelStorei(int pname, int param)
+	{
+		GLES20.glPixelStorei(pname, param);
+	}
+
+	@Override
+	public void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, byte[] data)
+	{
+		ByteBuffer output = ByteBuffer.allocateDirect(data.length).order(ByteOrder.nativeOrder());
+		output.put(data);
+		output.position(0);
+		GLES20.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, output);
+	}
+
+	@Override
+	public void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, Buffer data)
+	{
+		GLES20.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, data);
+	}
+
+	@Override
 	public void glTexImage2D(int target, int width, int height, int type, byte[] data)
 	{
 		glTexImage2D(target, 0, width, height, type, data);
@@ -322,9 +385,9 @@ public class AndroidGL implements GL {
 	}
 
 	@Override
-	public void glTexImage2D(int target, int width, int height, Buffer data)
+	public void glTexImage2D(int target, int level, int internalFormat, int width, int height, int format, int type, Buffer data)
 	{
-		GLES20.glTexImage2D(target, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		GLES20.glTexImage2D(target, level, internalFormat, width, height, 0, format, type, data);
 	}
 
 	@Override
@@ -351,6 +414,20 @@ public class AndroidGL implements GL {
 	public String glGetShaderInfoLog(int shader)
 	{
 		return GLES20.glGetShaderInfoLog(shader);
+	}
+
+	@Override
+	public int glGetProgrami(int program, int pname)
+	{
+		int[] v = new int[1];
+		GLES20.glGetProgramiv(program, pname, v, 0);
+		return v[0];
+	}
+
+	@Override
+	public String glGetProgramInfoLog(int program)
+	{
+		return GLES20.glGetProgramInfoLog(program);
 	}
 
 	@Override

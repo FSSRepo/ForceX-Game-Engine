@@ -22,9 +22,22 @@ public interface SystemDevice {
 
     void invokeFileChooser(boolean open, String label, String def_name, OnAndroidFileStream listener);
 
+    /**
+     * Solicita texto usando el input nativo de la plataforma (en Android abre un diálogo).
+     * En escritorio no se usa: el {@code EditText} recibe las teclas físicas directamente.
+     */
+    void requestTextInput(String current_text, String hint, boolean numbers_only, boolean password, OnTextInputListener listener);
+
     interface OnAndroidFileStream {
         void open(InputStream is, String name);
 
         void save(OutputStream os);
+    }
+
+    interface OnTextInputListener {
+        /**
+         * @param text texto aceptado, o {@code null} si el usuario canceló.
+         */
+        void onTextInput(String text);
     }
 }

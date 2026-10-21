@@ -20,7 +20,8 @@ public class ScrollView extends View {
     @Override
     public void updateExtent() {
         layout.settingLayout();
-        setWidth(layout.getExtentWidth());
+        setWidth(layout.getExtentWidth() * 2f);
+        super.updateExtent();
     }
 
     @Override
@@ -30,8 +31,8 @@ public class ScrollView extends View {
         }
         drawer.setScale(extent.x, extent.y);
         drawer.renderLineQuad(local, null);
-        layout.local.set(local.x, local.y + extent.y - layout.getExtentHeight() + cursorY);
-        drawer.scissorArea(local.x, local.y, extent.x, extent.y);
+        layout.local.set(local.x, local.y - extent.y + cursorY + layout.getExtentHeight());
+        drawer.scissorArea(local.x - extent.x, local.y - extent.y, extent.x * 2f, extent.y * 2f);
         layout.onDraw(drawer);
         drawer.finishScissor();
     }
@@ -49,7 +50,7 @@ public class ScrollView extends View {
                 cursorY += delta;
             }
             layout.onTouch(x, y, type);
-        } else if (type == EventType.TOUCH_DROPPED && (Math.abs(cursorY - cursorYOld) < 0.04f)) {
+        } else if (type == EventType.TOUCH_DROPPED && (Math.abs(cursorY - cursorYOld) < 10f)) {
             layout.onTouch(x, y, EventType.TOUCH_PRESSED);
         }
         oy = y;
@@ -57,7 +58,7 @@ public class ScrollView extends View {
 
     @Override
     protected boolean testTouch(float x, float y) {
-        return isVisible() && GameUtils.testRect(x, y, local, layout.getExtentWidth(), layout.getExtentHeight());
+        return isVisible() && GameUtils.testRect(x, y, local, extent.x, extent.y);
     }
 
     @Override

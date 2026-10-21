@@ -43,7 +43,7 @@ public class ListView extends View {
     public void onDraw(Drawer drawer) {
         drawer.setScale(extent.x, extent.y);
         drawer.renderQuad(local, background_color, -1);
-        drawer.scissorArea(local.x, local.y, extent.x, extent.y);
+        drawer.scissorArea(local.x - extent.x, local.y - extent.y, extent.x * 2f, extent.y * 2f);
         adapter.render(drawer);
         drawer.finishScissor();
         if (debug) {
@@ -79,7 +79,7 @@ public class ListView extends View {
     }
 
     void updateExt() {
-        extent.set(width, height);
+        extent.set(width * 0.5f, height * 0.5f);
     }
 
     public interface OnItemClickListener {

@@ -42,7 +42,7 @@ public class GridView extends View {
     public void onDraw(Drawer drawer) {
         drawer.setScale(extent.x, extent.y);
         drawer.renderQuad(local, background_color, -1);
-        drawer.scissorArea(local.x, local.y, extent.x, extent.y);
+        drawer.scissorArea(local.x - extent.x, local.y - extent.y, extent.x * 2f, extent.y * 2f);
         adapter.render(drawer);
         drawer.finishScissor();
     }

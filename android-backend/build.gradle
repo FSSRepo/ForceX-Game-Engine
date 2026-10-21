@@ -9,8 +9,9 @@ android {
             aidl.srcDirs = ['src']
             renderscript.srcDirs = ['src']
             res.srcDirs = ['res']
-            assets.srcDirs = ['../forcex/src/main/resources']
             jniLibs.srcDirs = ['libs']
+            // datos estaticos del motor (shaders, fuentes, gui): van como assets del APK, igual que los lee desktop
+            assets.srcDirs = ['../forcex/src/main/resources', '../extensions/gui/src/main/resources']
         }
     }
 
@@ -24,7 +25,7 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 

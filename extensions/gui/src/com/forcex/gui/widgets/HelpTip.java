@@ -32,7 +32,7 @@ public class HelpTip {
     boolean dragging = false;
 
     public HelpTip(UIContext ctx) {
-        position = new Vector2f();
+        position = new Vector2f(FX.gpu.getWidth() * 0.5f, FX.gpu.getHeight() * 0.5f);
         btn_extents = new Vector2f();
         arrow_from = new Vector2f();
         arrow_to = new Vector2f();
@@ -44,7 +44,7 @@ public class HelpTip {
         this.ctx = ctx;
         tips = new ArrayList<QueueTip>();
         text = new TextView(UIContext.default_font);
-        text.setConstraintWidth(0.4f);
+        text.setConstraintWidth(FX.gpu.getWidth() * 0.2f);
         text.setTextColor(255, 255, 255);
         tvbo = Drawer.createBuffer(new float[]{
                 0, 0.5f, 0, 0, 1, 1, 1,
@@ -102,7 +102,8 @@ public class HelpTip {
         if (tips.size() > 0) {
             QueueTip t = tips.get(tips.size() - 1);
             t.reference_img = image;
-            t.img_height = (aspectRatio ? height * ctx.getAspectRatio() : height);
+            // width y height están en píxeles reales.
+            t.img_height = height;
             t.img_width = width;
         }
     }
@@ -115,7 +116,7 @@ public class HelpTip {
     }
 
     public void onTouch(float x, float y, byte type) {
-        if (focus != null && type == EventType.TOUCH_DROPPED && GameUtils.testRect(x, y, text.local.set(0.8f, -0.8f), btn_extents.x, btn_extents.y)) {
+        if (focus != null && type == EventType.TOUCH_DROPPED && GameUtils.testRect(x, y, text.local.set(FX.gpu.getWidth() * 0.9f, FX.gpu.getHeight() * 0.9f), btn_extents.x, btn_extents.y)) {
             focus.setVisibility(View.VISIBLE);
             tips.remove(current);
             current = null;
@@ -130,7 +131,8 @@ public class HelpTip {
     }
 
     public void drawTriangle(Drawer drawer, float rot, float porcent) {
-        drawer.setTransform(rot, 0.07f, 0.07f * ctx.getAspectRatio());
+        float size = FX.gpu.getWidth() * 0.035f;
+        drawer.setTransform(rot, size, size);
         drawer.freeRender(tvbo, arrow_from.lerp(arrow_to, porcent), arrow_color, -1);
         FX.gl.glDrawArrays(GL.GL_TRIANGLES, 0, 3);
     }
@@ -141,7 +143,8 @@ public class HelpTip {
         } else {
             drag_color.a = (short) (255f * porcent);
         }
-        drawer.setScale(0.07f, 0.07f * ctx.getAspectRatio());
+        float size = FX.gpu.getWidth() * 0.035f;
+        drawer.setScale(size, size);
         drawer.renderQuad(!inverse_arrow ? drag_from.lerp(drag_to, porcent) : drag_to, drag_color, drag_image);
     }
 
@@ -163,7 +166,7 @@ public class HelpTip {
             }
             timer += FX.gpu.getDeltaTime();
         }
-        drawer.setScale(1f, 1f);
+        drawer.setScale(FX.gpu.getWidth() * 0.5f, FX.gpu.getHeight() * 0.5f);
         drawer.renderQuad(position, color, -1);
         if (!request_show && tips.size() > 0) {
             if (current == null) {
@@ -173,9 +176,9 @@ public class HelpTip {
                     return;
                 }
                 show(current.view);
-                left = local.x <= 0;
-                arrow_from.set(local.x + (focus.getExtentWidth() + 0.1f) * (left ? 1 : -1.0f), local.y);
-                arrow_to.set(local.x + (focus.getExtentWidth() + 0.2f) * (left ? 1 : -1.0f), local.y);
+                left = local.x <= FX.gpu.getWidth() * 0.5f;
+                arrow_from.set(local.x + (focus.getExtentWidth() + FX.gpu.getWidth() * 0.05f) * (left ? 1 : -1.0f), local.y);
+                arrow_to.set(local.x + (focus.getExtentWidth() + FX.gpu.getWidth() * 0.1f) * (left ? 1 : -1.0f), local.y);
                 dragging = false;
                 if (current.drag_x) {
                     drag_from.x = local.x - focus.getExtentWidth();
@@ -206,9 +209,11 @@ public class HelpTip {
             renderTitle(drawer);
             renderDescription(drawer);
             if (current.reference_img != -1) {
-                img_location.x = left ? (0.95f - current.img_width) : (-0.95f + current.img_width);
-                img_location.y = text.local.y - (0.015f + text.getHeight() + current.img_height);
-                drawer.setScale(current.img_width, current.img_height);
+                img_location.x = left
+                        ? (FX.gpu.getWidth() * 0.975f - current.img_width * 0.5f)
+                        : (FX.gpu.getWidth() * 0.025f + current.img_width * 0.5f);
+                img_location.y = text.local.y - text.getHeight() * 0.5f - FX.gpu.getHeight() * 0.015f - current.img_height * 0.5f;
+                drawer.setScale(current.img_width * 0.5f, current.img_height * 0.5f);
                 drawer.renderQuad(img_location, null, current.reference_img);
             }
         }
@@ -224,11 +229,11 @@ public class HelpTip {
 
     private void renderButton(Drawer drawer) {
         text.setTextAlignment(TextView.TEXT_ALIGNMENT_CENTER);
-        text.setTextSize(0.07f);
+        text.setTextSize(FX.gpu.getHeight() * 0.035f);
         text.setText(lang != null ? lang.get("next") : "Next");
-        text.local.set(0.8f, -0.8f);
-        btn_extents.x = text.getWidth() * 1.5f;
-        btn_extents.y = text.getHeight() * 1.2f;
+        text.local.set(FX.gpu.getWidth() * 0.9f, FX.gpu.getHeight() * 0.9f);
+        btn_extents.x = text.getWidth() * 0.75f;
+        btn_extents.y = text.getHeight() * 0.6f;
         drawer.setScale(btn_extents.x, btn_extents.y);
         drawer.renderQuad(text.local, btn_color, -1);
         text.onDraw(drawer);
@@ -236,44 +241,47 @@ public class HelpTip {
 
     private void renderTitle(Drawer drawer) {
         text.setTextAlignment(TextView.TEXT_ALIGNMENT_CENTER);
-        text.setTextSize(0.07f);
+        text.setTextSize(FX.gpu.getHeight() * 0.035f);
         text.setText(current.title);
-        text.local.x = -0.95f + text.getWidth();
+        text.local.x = FX.gpu.getWidth() * 0.025f + text.getWidth() * 0.5f;
         boolean invasion = text.local.x > focus.local.x - focus.getExtentWidth() && text.local.x < focus.local.x + focus.getExtentWidth();
         if (invasion) {
-            float margin_right = (local.x + focus.getExtentWidth() + 0.05f) + text.getWidth();
-            float margin_left = (local.x - focus.getExtentWidth() - 0.05f) - text.getWidth();
+            float margin_right = (local.x + focus.getExtentWidth() + FX.gpu.getWidth() * 0.025f) + text.getWidth() * 0.5f;
+            float margin_left = (local.x - focus.getExtentWidth() - FX.gpu.getWidth() * 0.025f) - text.getWidth() * 0.5f;
             if (text.local.x > focus.local.x) { // check right
-                if (margin_left < 1) {
+                if (margin_left < FX.gpu.getWidth()) {
                     text.local.x = margin_right;
                 } else {
                     text.local.x = margin_left;
                 }
             } else { // is left
-                if (margin_left > -1) {
+                if (margin_left > 0) {
                     text.local.x = margin_left;
                 } else {
                     text.local.x = margin_right;
                 }
             }
         }
-        text.local.y = (local.y + focus.getExtentHeight()) < 0.8f ? 0.98f - text.getHeight() : ((local.y - focus.getExtentHeight()) - 0.1f - text.getHeight());
-        if (text.local.y < -1.0f) {
-            text.local.y = 0.98f - text.getHeight();
-        } else if (text.local.y < -0.5f) {
-            text.local.y = (local.y + focus.getExtentHeight() - text.getHeight());
+        float title_y = FX.gpu.getHeight() * 0.01f + text.getHeight() * 0.5f;
+        text.local.y = (local.y + focus.getExtentHeight()) < FX.gpu.getHeight() * 0.1f
+                ? title_y
+                : ((local.y - focus.getExtentHeight()) - FX.gpu.getHeight() * 0.05f - text.getHeight() * 0.5f);
+        if (text.local.y > FX.gpu.getHeight()) {
+            text.local.y = title_y;
+        } else if (text.local.y > FX.gpu.getHeight() * 0.75f) {
+            text.local.y = local.y - focus.getExtentHeight() + text.getHeight() * 0.5f;
         }
         text.onDraw(drawer);
     }
 
     private void renderDescription(Drawer drawer) {
-        float x = text.local.x - text.getWidth();
-        float y = text.local.y - text.getHeight();
+        float x = text.local.x - text.getWidth() * 0.5f;
+        float y = text.local.y + text.getHeight() * 0.5f;
         text.setTextAlignment(TextView.TEXT_ALIGNMENT_CENTER_LEFT);
-        text.setTextSize(0.05f);
+        text.setTextSize(FX.gpu.getHeight() * 0.025f);
         text.setText(current.description);
-        text.local.x = x + text.getWidth();
-        text.local.y = y - 0.05f - text.getHeight();
+        text.local.x = x + text.getWidth() * 0.5f;
+        text.local.y = y + FX.gpu.getHeight() * 0.025f + text.getHeight() * 0.5f;
         text.onDraw(drawer);
     }
 

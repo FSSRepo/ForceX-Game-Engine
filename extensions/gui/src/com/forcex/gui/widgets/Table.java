@@ -118,7 +118,7 @@ public class Table extends View {
         drawer.freeRender(lines_vbo, local, edge_color, -1);
         gl.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, ibo);
         gl.glDrawElements(GL.GL_LINES, length);
-        float oy = (local.y + extent.y) - cell_height;
+        float oy = (local.y - extent.y) + cell_height;
 		for (String[] row : data) {
 			float ox = (local.x - extent.x) + (widths == null ?
 					cell_width : 0);
@@ -135,7 +135,7 @@ public class Table extends View {
 					ox += widths[x] * extent.x;
 				}
 			}
-			oy -= cell_height * 2;
+			oy += cell_height * 2;
 		}
     }
 

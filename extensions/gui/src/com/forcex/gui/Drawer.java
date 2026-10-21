@@ -5,6 +5,7 @@ import com.forcex.core.GL;
 import com.forcex.core.gpu.Texture;
 import com.forcex.gfx3d.shader.SpriteShader;
 import com.forcex.math.Matrix2f;
+import com.forcex.math.Matrix4f;
 import com.forcex.math.Vector2f;
 import com.forcex.utils.BufferUtils;
 import com.forcex.utils.Color;
@@ -19,20 +20,23 @@ public class Drawer {
     private final int quad_vbo;
     private final int quad_line_vbo;
     private final Matrix2f transform;
+    private final Matrix4f projection;
+    private int projection_width = -1, projection_height = -1;
 
     protected Drawer(SpriteShader shader) {
         this.shader = shader;
         transform = new Matrix2f();
+        projection = new Matrix4f();
         white_background_texture = Texture.genTextureWhite();
         line_vbo = createBuffer(new float[]{
                 1, 0, 0, 0, 1, 1, 1,
                 -1, 0, 0, 0, 1, 1, 1
         }, false, false);
         quad_vbo = createBuffer(new float[]{
-                -1, 1, 0, 0, 1, 1, 1,
-                -1, -1, 0, 1, 1, 1, 1,
-                1, 1, 1, 0, 1, 1, 1,
-                1, -1, 1, 1, 1, 1, 1
+                -1, 1, 0, 1, 1, 1, 1,
+                -1, -1, 0, 0, 1, 1, 1,
+                1, 1, 1, 1, 1, 1, 1,
+                1, -1, 1, 0, 1, 1, 1
         }, false, false);
         quad_line_vbo = createBuffer(new float[]{
                 -1, 1, 0, 0, 1, 1, 1,
@@ -143,15 +147,28 @@ public class Drawer {
         gl.glDrawArrays(GL.GL_LINES, 0, 2);
     }
 
-    public void scissorArea(float x, float y, float width, float height) {
+    public void scissorArea(float left, float top, float width, float height) {
+        int w = Math.max(0, (int) width);
+        int h = Math.max(0, (int) height);
         gl.glEnable(GL.GL_SCISSOR_TEST);
-        gl.glScissor(
-                (int) ((FX.gpu.getWidth() * ((x - width) + 1)) * 0.5f),
-                (int) ((FX.gpu.getHeight() * ((y - height) + 1)) * 0.5f), (int) (FX.gpu.getWidth() * width), (int) (FX.gpu.getHeight() * height));
+        // glScissor usa origen inferior-izquierdo; el GUI usa origen superior-izquierdo.
+        gl.glScissor((int) left, FX.gpu.getHeight() - ((int) top + h), w, h);
     }
 
     public void finishScissor() {
         gl.glDisable(GL.GL_SCISSOR_TEST);
+    }
+
+    private void updateProjection() {
+        int width = FX.gpu.getWidth();
+        int height = FX.gpu.getHeight();
+        if (width == projection_width && height == projection_height) {
+            return;
+        }
+        projection_width = width;
+        projection_height = height;
+        // Píxeles con origen en la esquina superior izquierda y Y hacia abajo.
+        projection.setOrthogonal(0f, width, height, 0f, -1f, 1f);
     }
 
     void start() {
@@ -159,6 +176,8 @@ public class Drawer {
         gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
         gl.glDisable(GL.GL_DEPTH_TEST);
         shader.start();
+        updateProjection();
+        shader.setProjection(projection);
     }
 
     void end() {

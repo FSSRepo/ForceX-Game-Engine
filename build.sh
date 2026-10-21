@@ -3,6 +3,7 @@
 android=FALSE
 ninjapath="$(dirname "$0")/ninja"
 reconfig=FALSE
+rmlui=FALSE
 src=""
 
 while [[ "$1" != "" ]]; do
@@ -20,6 +21,8 @@ while [[ "$1" != "" ]]; do
                     ;;
         --android ) android=TRUE
                     ;;
+        --rmlui ) rmlui=TRUE
+                  ;;
     esac
     shift
 done
@@ -36,6 +39,10 @@ if [[ $# -eq 0 ]]; then
     read -r -p "Force CMake reconfigure? [y/N]: " rc
     if [[ "$rc" =~ ^[Yy]$ ]]; then
         reconfig=TRUE
+    fi
+    read -r -p "Build RmlUi extension (--rmlui)? [y/N]: " rm
+    if [[ "$rm" =~ ^[Yy]$ ]]; then
+        rmlui=TRUE
     fi
     if [[ "$android" == "TRUE" ]]; then
         read -r -p "Android NDK path [${ANDROID_NDK:-not set}]: " ndk
@@ -69,6 +76,15 @@ if [[ "$android" == "TRUE" ]]; then
 
     abis=(armeabi-v7a arm64-v8a x86 x86_64)
 
+    if [[ "$rmlui" == "TRUE" ]]; then
+        echo "Building RmlUi native dependencies..."
+        abi_list="$(IFS=,; echo "${abis[*]}")"
+        for dep in freetype lunasvg rlottie; do
+            bash "extensions/rml-gui/deps/$dep/build-$dep.sh" --platform android \
+                --ndk-path "$ndkpath" --android-platform "$platform" --abis "$abi_list" || exit 1
+        done
+    fi
+
     for abi in "${abis[@]}"; do
         echo "Android ABI path: build/build-$abi"
         mkdir -p "build-natives/build-$abi"
@@ -76,7 +92,7 @@ if [[ "$android" == "TRUE" ]]; then
 
         if [[ ! -f "build-natives/build-$abi/build.ninja" ]] || [[ "$reconfig" == "TRUE" ]]; then
             rm -rf "build-natives/build-$abi"
-            cmake -S . -B "build-natives/build-$abi" -DFX_OAL="$oal" \
+            cmake -S . -B "build-natives/build-$abi" -DCMAKE_BUILD_TYPE=Release -DFX_OAL="$oal" -DFX_RMLUI="$rmlui" \
                 -DCMAKE_TOOLCHAIN_FILE="$ndkpath/build/cmake/android.toolchain.cmake" \
                 -DANDROID_ABI="$abi" -DANDROID_NDK="$ndkpath" -DANDROID_PLATFORM="$platform" \
                 -DCMAKE_MAKE_PROGRAM="$ninjapath" -GNinja
@@ -88,9 +104,16 @@ if [[ "$android" == "TRUE" ]]; then
 
     ./gradlew android-backend:assembleRelease
 
+    if [[ "$rmlui" == "TRUE" ]]; then
+        ./gradlew :extensions:rml-gui:jar || exit 1
+    fi
+
     echo "Packaging Android distribution..."
     mkdir -p dist/android
     find android-backend/build/outputs -name "*.aar" -exec cp -v {} dist/android \;
+    if [[ "$rmlui" == "TRUE" ]]; then
+        cp -v extensions/rml-gui/build/libs/forcex-rmlui-gui.jar dist/android || true
+    fi
     cp -v forcex/build/libs/forcex.jar dist/android || true
 else
     # Linux desktop build
@@ -101,9 +124,17 @@ else
 
     mkdir -p build-natives/linux dist/linux/data dist/linux/libs
 
+    if [[ "$rmlui" == "TRUE" ]]; then
+        echo "Building RmlUi native dependencies..."
+        for dep in freetype lunasvg rlottie; do
+            bash "extensions/rml-gui/deps/$dep/build-$dep.sh" --platform linux || exit 1
+        done
+    fi
+
     if [[ ! -f "build-natives/linux/build.ninja" ]] || [[ "$reconfig" == "TRUE" ]]; then
         cmake -S . -B build-natives/linux \
             -DCMAKE_BUILD_TYPE=Release \
+            -DFX_RMLUI="$rmlui" \
             -DCMAKE_CXX_FLAGS="-I$JAVA_HOME/include -I$JAVA_HOME/include/linux" \
             -DCMAKE_MAKE_PROGRAM="$ninjapath" -GNinja
     fi
@@ -114,6 +145,10 @@ else
     find desktop-backend/libs -name "*.jar" -exec cp -v {} dist/linux/libs \;
 
     ./gradlew desktop-backend:assemble
+
+    if [[ "$rmlui" == "TRUE" ]]; then
+        ./gradlew :extensions:rml-gui:jar || exit 1
+    fi
 
     if [[ ! -f "forcex/build/libs/forcex.jar" ]]; then
         echo "forcex.jar not found. Creating with compiled files."
@@ -128,5 +163,8 @@ else
     echo "Packaging Linux distribution..."
     cp -v forcex/build/libs/forcex.jar dist/linux/libs || true
     cp -v desktop-backend/build/libs/forcex-desktop-backend.jar dist/linux/libs || true
+    if [[ "$rmlui" == "TRUE" ]]; then
+        cp -v extensions/rml-gui/build/libs/forcex-rmlui-gui.jar dist/linux/libs || true
+    fi
     cp -rv forcex/src/main/resources/* dist/linux/data/ || true
 fi

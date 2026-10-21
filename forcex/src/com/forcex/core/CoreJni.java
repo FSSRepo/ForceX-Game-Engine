@@ -15,7 +15,7 @@ public class CoreJni {
     public static final byte ETC1_LOW_QUALITY = 0;
 
     static {
-        System.loadLibrary("fxcore");
+        NativeLoader.init("fxcore");
     }
 
     public static native byte[] dxtcompress(byte[] in, int width, int height, int flags);
@@ -30,4 +30,8 @@ public class CoreJni {
     public static native byte[] imageDecodeFromMemory(int[] info, byte[] buffer);
 
     public static native byte[] convertImageFormat(byte[] in, int with, int height, boolean is565);
+
+    public static native byte[] fontBake(byte[] ttf, float pixelHeight, int firstChar, int numChars, int atlasW, int atlasH, float[] outGlyphs, float[] outMetrics);
+
+    public static native float fontKerning(byte[] ttf, int cp1, int cp2, float pixelHeight);
 }

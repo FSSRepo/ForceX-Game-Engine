@@ -71,6 +71,10 @@ public class Vehicle {
     int vehicle;
     float wheel_width = 0.2f, wheel_radius = 0.34f;
 
+    private final CameraCollision camera_collision = new CameraCollision();
+    // mitad del largo del chasis mas margen: impactos mas cerca que esto pertenecen al propio auto
+    private static final float CAMERA_SELF_RADIUS = 2.8f;
+
     ModelObject chassis;
 
     ArrayList<ModelObject> wheels = new ArrayList<>();
@@ -80,18 +84,26 @@ public class Vehicle {
     Matrix4f vehicle_physics_matrix = new Matrix4f();
 
     boolean onVehicle = false;
-    Quaternion start_cam_rot = new Quaternion();
-    Quaternion end_cam_rot;
-    Quaternion tmp_rot = new Quaternion();
-    float refresh_cam_time = 0.0f;
-    float camera_blend = -1.0f;
-    float CAM_REORIENT_TIME = 1.5f;
     private Vector3f follow_fixed = new Vector3f(0, 0, 0);
+    // rot_x es el giro de la camara respecto al rumbo del auto (180 = justo detras)
     float distance = 14f, rot_x = 180, rot_y = 30;
 
-    public Vehicle(Node vehicle_nodes, Mesh wheel) {
+    // camara de seguimiento: solo sigue el rumbo (yaw) del auto, no su cabeceo ni balanceo
+    private static final float CAMERA_HEADING_SMOOTH = 3.5f;
+    private static final float CAMERA_RECENTER_DELAY = 1.5f;
+    private static final float CAMERA_RECENTER_SMOOTH = 1.8f;
+    private static final float CAMERA_RECENTER_MIN_SPEED = 2f;
+    private static final float CAMERA_DEFAULT_PITCH = 30f;
+    private static final float CAMERA_MIN_PITCH = 0f, CAMERA_MAX_PITCH = 85f;
+    private float camera_heading = 0.0f;
+    private boolean camera_ready = false;
+    private float camera_idle = 0.0f;
+    private final Vector3f last_chassis_pos = new Vector3f();
+    private final Vector3f forward_tmp = new Vector3f();
+
+    public Vehicle(Vector3f spawn, Node vehicle_nodes, Mesh wheel) {
         Matrix4f root = new Matrix4f();
-        root.setLocation(30, 2.5f, 25);
+        root.setLocation(spawn.x, spawn.y, spawn.z);
         {
             float chassis_extent_x = 1f;
             float chassis_extent_z = 2f;
@@ -131,7 +143,7 @@ public class Vehicle {
             float max_suspension_travel = 10.0f;
             plVehiclef(PL_MAX_SUSPENSION_TRAVEL, max_suspension_travel);
             plVehiclef(PL_MAX_SUSPENSION_FORCE, 3456);
-            plVehiclef(PL_FRICTION_SLIP, 20);
+            plVehiclef(PL_FRICTION_SLIP, 10);
 
             vehicle = plGenVehicle();
             plVehiclei(PL_VEHICLE_CHASSIS, chassis_body);
@@ -182,7 +194,7 @@ public class Vehicle {
 
                 plVehiclefv(PL_ADD_WHEEL, params, 12);
 
-                plWheelf(i, PL_WHEEL_ROLL_INFLUENCE, 1f);
+                plWheelf(i, PL_WHEEL_ROLL_INFLUENCE, 0.1f);
                 wheels.add(new ModelObject(wheel));
             }
 
@@ -191,46 +203,108 @@ public class Vehicle {
         }
     }
 
+    private static final Matrix3f MODEL_TO_PHYSICS = Quaternion.fromEulerAngles(-90, 180, 0).toMatrix();
+    private Matrix3f door_base_rotation;
+
+    // abre la puerta del conductor girandola sobre su bisagra (eje vertical del modelo); 0 = cerrada
+    public void setDriverDoorAngle(Node nodes, float degrees) {
+        Node door = nodes.getNode("door_lf_dummy");
+        if(door_base_rotation == null) {
+            door_base_rotation = new Matrix3f().set(door.rotation_matrix);
+        }
+        door.rotation_matrix = new Matrix3f().set(door_base_rotation).multLocal(Quaternion.fromEulerAngles(0, 0, degrees).toMatrix());
+        door.notifyUpdate();
+    }
+
+    // asiento del conductor (entre la puerta y el centro del auto) y direccion hacia donde avanza el auto
+    public Vector3f getDriverSeat(Node nodes, Vector3f forward) {
+        Vector3f door = MODEL_TO_PHYSICS.mult(nodes.getNode("door_lf_dummy").position);
+        Vector3f seat = vehicle_physics_matrix.mult(new Vector3f(door.x * 0.5f, door.y, door.z));
+
+        // el frente es hacia donde estan las ruedas delanteras respecto a las traseras
+        Vector3f front = MODEL_TO_PHYSICS.mult(nodes.getNode("wheel_rf_dummy").position);
+        Vector3f rear = MODEL_TO_PHYSICS.mult(nodes.getNode("wheel_rb_dummy").position);
+        Vector3f front_world = vehicle_physics_matrix.mult(front);
+        Vector3f rear_world = vehicle_physics_matrix.mult(rear);
+        forward.set(front_world.x - rear_world.x, 0.0f, front_world.z - rear_world.z);
+        forward.normalize();
+
+        seat.y = getChassisHeight() - 0.2f;
+        return seat;
+    }
+
+    public float getChassisHeight() {
+        return vehicle_physics_matrix.getLocation(null).y;
+    }
+
+    // posicion junto a la puerta del conductor (izquierda delantera) a la altura y, con facing apuntando hacia el auto
+    public Vector3f getDriverDoorPosition(Node nodes, float y, Vector3f facing) {
+        // misma orientacion que usa el render del modelo (ver update): rotacion del frame raiz antes de la matriz fisica
+        Vector3f door = MODEL_TO_PHYSICS.mult(nodes.getNode("door_lf_dummy").position);
+        float side = door.x < 0.0f ? -1.0f : 1.0f;
+        Vector3f outside = vehicle_physics_matrix.mult(new Vector3f(door.x + side * 0.9f, door.y, door.z));
+        Vector3f inside = vehicle_physics_matrix.mult(door);
+        facing.set(inside.x - outside.x, 0.0f, inside.z - outside.z);
+        facing.normalize();
+        outside.y = y;
+        return outside;
+    }
+
+    /** Llamar cuando el jugador mueve la camara a mano: pausa el recolocado automatico. */
+    public void onCameraInput() {
+        camera_idle = 0.0f;
+    }
+
+    // lleva un angulo en grados al rango [-180, 180)
+    private static float wrapDegrees(float degrees) {
+        return ((degrees % 360.0f) + 540.0f) % 360.0f - 180.0f;
+    }
+
     public void update(Camera camera, float delta, Node root) {
         // handle follow camera
         if (onVehicle) {
-            end_cam_rot = vehicle_physics_matrix.getRotation(tmp_rot);
             Vector3f chassis_pos = vehicle_physics_matrix.getLocation(null);
-            if (refresh_cam_time == 0.0f) {
-                start_cam_rot.set(end_cam_rot);
+            float speed = camera_ready && delta > 0.0f ? chassis_pos.distance(last_chassis_pos) / delta : 0.0f;
+            last_chassis_pos.set(chassis_pos);
+
+            // rumbo actual del auto: hacia donde apunta su eje z local, proyectado al plano horizontal
+            Vector3f forward = vehicle_physics_matrix.getUpperLeft().mult(forward_tmp.set(0, 0, 1));
+            float heading = (float) Math.toDegrees(Math.atan2(forward.x, forward.z));
+            if (!camera_ready) {
+                // al subir, la camara empieza ya detras del auto
+                camera_heading = heading;
+                camera_ready = true;
+                camera_idle = CAMERA_RECENTER_DELAY;
             }
 
-            Quaternion cur = start_cam_rot;
+            // el rumbo de la camara persigue al del auto, mas lento si esta casi detenido
+            float heading_diff = wrapDegrees(heading - camera_heading);
+            float heading_rate = CAMERA_HEADING_SMOOTH * Math.max(0.15f, Math.min(1.0f, speed / 3.0f));
+            camera_heading += heading_diff * Math.min(1.0f, heading_rate * delta);
 
-            if (refresh_cam_time > 0.4f) {
-                if (camera_blend >= 0.0f) {
-                    if (camera_blend > CAM_REORIENT_TIME) {
-                        cur = end_cam_rot;
-                        start_cam_rot.set(end_cam_rot);
-                        refresh_cam_time = 0.0f;
-                        camera_blend = -1.0f;
-                    } else {
-                        cur = start_cam_rot.slerp(end_cam_rot, camera_blend / CAM_REORIENT_TIME);
-                        camera_blend += delta;
-                    }
-                } else if (!cur.equals(end_cam_rot)) {
-                    camera_blend = 0.0f;
-                }
+            // sin tocar la camara y en marcha, vuelve a ponerse detras
+            camera_idle += delta;
+            rot_y = Math.max(CAMERA_MIN_PITCH, Math.min(CAMERA_MAX_PITCH, rot_y));
+            if (camera_idle > CAMERA_RECENTER_DELAY && speed > CAMERA_RECENTER_MIN_SPEED) {
+                float blend = Math.min(1.0f, CAMERA_RECENTER_SMOOTH * delta);
+                rot_x += wrapDegrees(180.0f - rot_x) * blend;
+                rot_y += (CAMERA_DEFAULT_PITCH - rot_y) * blend;
             }
 
-            refresh_cam_time += delta;
-
-            Matrix3f cam_orientation = cur.toMatrix();
-            Vector3f local_follow = cam_orientation.mult(follow_fixed.rotateOnSphereOrigin(distance, rot_x, rot_y, false));
-            Vector3f follow = chassis_pos.add(local_follow);
+            Vector3f local_follow = follow_fixed.rotateOnSphereOrigin(distance, camera_heading + rot_x, rot_y, false);
+            // los impactos dentro del radio del auto son el propio chasis y no cuentan
+            Vector3f follow = camera_collision.resolve(
+                    chassis_pos.add(new Vector3f(0, 1.0f, 0)), chassis_pos.add(local_follow), CAMERA_SELF_RADIUS, delta);
             camera.setPosition(follow.x, follow.y, follow.z);
             camera.lookAt(chassis_pos);
+        } else {
+            camera_ready = false;
         }
 
         plGetRigidBodyfv(chassis_body, PL_MOTION_STATE_TRANSFORM, vehicle_physics_matrix.data, 16);
 
         root.rotation_matrix = vehicle_physics_matrix.getUpperLeft().multLocal(Quaternion.fromEulerAngles(-90, 180, 0).toMatrix());
-        vehicle_physics_matrix.getLocation(root.position);
+        root.position = vehicle_physics_matrix.getLocation(null);
         root.notifyUpdate();
     }
 

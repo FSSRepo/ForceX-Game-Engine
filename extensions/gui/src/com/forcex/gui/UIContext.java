@@ -4,15 +4,14 @@ import com.forcex.FX;
 import com.forcex.app.EventType;
 import com.forcex.gfx3d.shader.SpriteShader;
 import com.forcex.gui.widgets.Button;
+import com.forcex.gui.widgets.EditText;
 import com.forcex.gui.widgets.HelpTip;
-import com.forcex.gui.widgets.KeyBoard;
 import com.forcex.gui.widgets.SlidePanel;
 
 import java.util.ArrayList;
 
 public class UIContext {
     public static Font default_font;
-    private final float aspectRatio;
     public View[] view_priority;
     public ArrayList<View> notifyDropTouch;
     public boolean dispose_drop = false;
@@ -23,11 +22,11 @@ public class UIContext {
     private SlidePanel slide_panel;
     private final Dialog[] dialogs;
     private final ArrayList<View> untouchable_views;
+    private EditText focused_edit_text;
 
     public UIContext() {
         drawer = new Drawer(new SpriteShader(true, false, true));
-        aspectRatio = (float) FX.gpu.getWidth() / FX.gpu.getHeight();
-        default_font = new Font("fonts/windows.fft");
+        default_font = Font.get("fonts/Lato-Regular.ttf", 48);
         Toast.create(this);
         view_priority = new View[8];
         dialogs = new Dialog[6];
@@ -39,9 +38,12 @@ public class UIContext {
         return drawer;
     }
 
-    public void bindKeyBoard(float width) {
-        KeyBoard.physic_keyboard = !FX.gpu.isOpenGLES();
-        KeyBoard.create(width, this);
+    public void setFocusedEditText(EditText edit_text) {
+        focused_edit_text = edit_text;
+    }
+
+    public EditText getFocusedEditText() {
+        return focused_edit_text;
     }
 
     public void useHelpTips() {
@@ -60,6 +62,11 @@ public class UIContext {
         content = view;
         if (!content.isLayout()) {
             content.context = this;
+        } else {
+            // El layout raíz se centra en pantalla; los hijos se posicionan desde local ± extent.
+            content.local.set(
+                    FX.gpu.getWidth() * 0.5f + content.relative.x,
+                    FX.gpu.getHeight() * 0.5f + content.relative.y);
         }
     }
 
@@ -82,10 +89,6 @@ public class UIContext {
             return ((Layout) content).findViewByID(id);
         }
         return null;
-    }
-
-    public float getAspectRatio() {
-        return aspectRatio;
     }
 
     public void draw() {
@@ -113,9 +116,6 @@ public class UIContext {
         }
         if (priori != null) {
             priori.render(drawer);
-        }
-        if (KeyBoard.instance != null) {
-            KeyBoard.instance.render(drawer);
         }
         Toast.instance.render(drawer);
         if (help_tips != null && help_tips.showing) {
@@ -155,9 +155,6 @@ public class UIContext {
             return true;
         }
         if (Toast.instance.testTouch(x, y)) {
-            return true;
-        }
-        if (KeyBoard.instance != null && KeyBoard.instance.testTouch(x, y)) {
             return true;
         }
         Dialog prior = getDialogPriority();
@@ -200,10 +197,6 @@ public class UIContext {
         }
         if (Toast.instance.testTouch(x, y) && !release_touch) {
             Toast.instance.onTouch(type == EventType.TOUCH_PRESSED);
-            release_touch = true;
-        }
-        if (KeyBoard.instance != null && !release_touch && KeyBoard.instance.testTouch(x, y)) {
-            KeyBoard.instance.onTouch(x, y, type);
             release_touch = true;
         }
         Dialog priority = getDialogPriority();
@@ -258,8 +251,8 @@ public class UIContext {
     }
 
     public void onKeyEvent(byte key, boolean pressed) {
-        if (KeyBoard.instance != null) {
-            KeyBoard.instance.onKeyEvent(key, pressed);
+        if (focused_edit_text != null && !focused_edit_text.onKeyEvent(key, pressed)) {
+            focused_edit_text = null;
         }
     }
 
@@ -320,6 +313,6 @@ public class UIContext {
     }
 
     public void destroy() {
-        default_font.delete();
+        Font.clearCache();
     }
 }

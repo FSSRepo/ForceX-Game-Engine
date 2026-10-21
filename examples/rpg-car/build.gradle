@@ -25,6 +25,8 @@ project(":examples:rpg-car:android") {
         implementation project(":examples:rpg-car:core")
         implementation project(":android-backend")
         compileOnly project(":forcex")
+        // OpenPL para Android: su PL10 carga libopenpl.so (el jar de escritorio elige openpl/openpl64 por arquitectura)
+        implementation files('libs/openpl-android.aar')
     }
 }
 
@@ -32,7 +34,8 @@ project(":examples:rpg-car:core") {
     apply plugin: "java-library"
 
     dependencies {
-        implementation files('libs/libopenpl.jar')
+        // solo para compilar: en runtime lo aporta cada plataforma (jar en escritorio, aar en Android)
+        compileOnly files('libs/libopenpl.jar')
         implementation project(":forcex")
         implementation project(":extensions:gtasdk")
         implementation project(":extensions:gui")
@@ -46,6 +49,7 @@ project(":examples:rpg-car:desktop") {
         implementation project(":examples:rpg-car:core")
         implementation project(":desktop-backend")
         compileOnly project(":forcex")
+        implementation files('../core/libs/libopenpl.jar')
     }
 }
 

@@ -13,7 +13,6 @@ ForceX is a cross-platform 2D/3D game engine written in Java with native backend
 - **Animation**: Skeleton-based animation with bones and keyframe tracks
 - **Full GUI**: Rich widgets (buttons, lists, editors, keyboards, joysticks, dialogs, toast, and more)
 - **Collision Detection**: Bounding boxes, spheres, meshes, and triangles
-- **Ray Tracing Engine**: RTEngine module for real-time ray tracing
 - **Audio**: OpenAL support (optional on Android) and WAV playback
 - **Asset Management**: Custom package formats, texture compression (DXT, ETC1)
 - **Networking**: HTTP download manager and property files
@@ -32,7 +31,7 @@ ForceX is a cross-platform 2D/3D game engine written in Java with native backend
 | `android-backend/` | Android platform backend (OpenGL ES, input, audio) |
 | `desktop-backend/` | Desktop platform backend (LWJGL, OpenGL) |
 | `extensions/gtasdk/` | SDK extension for GTA RenderWare files |
-| `examples/` | Sample projects (RPG Car, Super AI) |
+| `examples/` | Sample projects (RPG Car) |
 
 ---
 
@@ -110,25 +109,47 @@ build.bat --android
 
 ## Integration
 
-After building, all distribution files are placed in `dist/`.
+After building, the distribution files are placed in `dist/`:
 
-### Windows Integration
+| Target | Folder | Produced by |
+|--------|--------|-------------|
+| Windows | `dist/desktop/` | `build.bat` |
+| Linux | `dist/linux/` | `build.sh` |
+| Android | `dist/android/` | `build.bat --android` / `build.sh --android` |
 
-1. Copy the contents of `dist/windows/libs/` to your project's library folder.
-2. Copy `dist/windows/fxcore.dll` and the `dist/windows/data/` folder alongside your application's JAR.
+The engine native is loaded by `NativeLoader`, which supports **Windows, Linux and macOS** on `amd64` and `aarch64`. It first looks for the binary embedded in the jar under `natives/<os>/<arch>/`; when present, it is extracted to a temporary folder and loaded with `System.load(...)`, so **no `java.library.path` entry is required**. If the binary is not embedded (for example during development), it falls back to `System.loadLibrary(...)`, resolved through `java.library.path` and the working directory.
+
+### Desktop Integration
+
+1. Copy the platform libraries from the distribution folder to your project's `libs/`:
+
+   - Windows: `dist/desktop/libs/`
+   - Linux: `dist/linux/libs/`
+
+2. Package the engine native **inside your application jar** so `NativeLoader` can find and load it:
+
+   | OS | Arch | Resource path inside the jar |
+   |----|------|------------------------------|
+   | Windows | amd64 | `natives/windows/amd64/fxcore.dll` |
+   | Linux | amd64 | `natives/linux/amd64/libfxcore.so` |
+   | Linux | aarch64 | `natives/linux/aarch64/libfxcore.so` |
+   | macOS | amd64 | `natives/macos/amd64/libfxcore.dylib` |
+
+   You can also keep the binary loose next to the jar (`fxcore.dll` / `libfxcore.so`); it is then resolved through `java.library.path`, which includes the current directory by default.
+
+3. Copy the engine `data/` folder (fonts, gui, shaders) from the distribution folder alongside your application jar.
 
 ```
 your-app/
-├── app.jar
-├── fxcore.dll
-├── lwjgl.dll
-└── data/
-    ├── fonts/
-    ├── gui/
-    └── shaders/
+├── app.jar          # embeds natives/<os>/<arch>/fxcore(.dll|.so)
+├── data/
+│   ├── fonts/
+│   ├── gui/
+│   └── shaders/
+└── openpl64.dll     # (optional) third-party natives, resolved via System.loadLibrary
 ```
 
-3. Add the required JARs to your `build.gradle`:
+4. Add the required JARs to your `build.gradle`:
 
 ```groovy
 dependencies {
@@ -138,11 +159,12 @@ dependencies {
         'libs/lwjgl.jar',
         'libs/lwjgl-opengl.jar',
         'libs/lwjgl-glfw.jar',
-        'libs/lwjgl-openal.jar',
-        'libs/lwjgl_util.jar'
+        'libs/lwjgl-openal.jar'
     )
 }
 ```
+
+> **Third-party natives**: libraries that call `System.loadLibrary(...)` themselves (for example `openpl64`) cannot be embedded, because the JVM resolves them by name through `java.library.path`. Ship them loose in the working directory instead — `openpl64.dll` on Windows, `libopenpl64.so` on Linux. LWJGL's own natives are unaffected: LWJGL extracts and loads them by absolute path from its `lwjgl-*-natives-*.jar` files.
 
 ### Android Integration
 
@@ -172,6 +194,24 @@ The repository includes sample projects to help you get started:
 | Example | Description |
 |---------|-------------|
 | `examples/rpg-car` | RPG-style car game with physics |
-| `examples/super-ai` | AI simulation demo |
+| `examples/yaml-ui` | UI showcase: YAML-driven widgets and an RmlUi demo (`-Prmlui` on desktop) |
 
 Each example contains `core/`, `desktop/`, and `android/` submodules.
+
+### Running the desktop example
+
+After running `build.bat` (Windows) or `build.sh` (Linux) once to produce `dist/`, assemble the runnable folder:
+
+```bash
+gradlew :examples:rpg-car:desktop:dist
+```
+
+This creates `examples/rpg-car/desktop/output/`: the fat jar (with the engine native embedded inside it), the game assets, and the third-party native as a loose file. Run it **from that folder** so the loose `openpl64.dll` / `libopenpl64.so` is resolved through the working directory:
+
+```bash
+cd examples/rpg-car/desktop/output
+java -jar rpg-car.jar-all.jar
+```
+
+> On Windows, double-clicking the jar works too, since the working directory is set to the jar's folder.
+

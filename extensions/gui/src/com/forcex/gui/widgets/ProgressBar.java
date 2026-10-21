@@ -219,7 +219,7 @@ public class ProgressBar extends View {
     }
 
     void updateExt() {
-        extent.set(width, height);
+        extent.set(width * 0.5f, height * 0.5f);
     }
 
     public interface onSeekListener {
