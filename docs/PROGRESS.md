@@ -22,13 +22,13 @@ primer plano sin avisar; el usuario rechazó una prueba que lanzaba el juego en 
 - `e4b6c69` rpg-car: AN-94, animaciones de fusil/armado, puerta sincronizada, lanzador en ventana.
 - `93f554e` motor: blend, eventos, root motion, `update(dt)`, `CameraBlender`, `tools/re/dis.ps1`.
 
-### Sin commit todavía (hacer commit al retomar)
-- `examples/rpg-car/core/src/com/fss/rpg/PedLocomotion.java` (nuevo): ratio, estados STAND/WALK/RUN/SPRINT, blend,
-  velocidad por root motion.
-- `Player.java`: usa `PedLocomotion`; se quitaron `WALK_SPEED`, `RUN_SPEED`, `ACCELERATION`, `DECELERATION`,
-  `RUN_INPUT_THRESHOLD`, `RUN_HOLD_TIME`, `ANIM_*`, `WALK_start`, `Run_stop`. Sprint con Shift (`sprint_touch` para
-  el táctil, aún sin botón en la UI). Compila (`BUILD SUCCESSFUL`).
-- `tools/re/IfpRootMotion.java` (nuevo) y `docs/` (estos archivos).
+- `6497d77` rpg-car: `PedLocomotion` + `Player` usando el modelo de movimiento de SA; `MECHANICS_GTASA.md`; `docs/`;
+  `tools/re/IfpRootMotion.java`. (Los archivos de `docs/re/` de los agentes se commitearon a medias; seguirán
+  cambiando.)
+
+`PedLocomotion` (ratio, estados STAND/WALK/RUN/SPRINT, blend, velocidad por root motion). `Player.java` ya no tiene
+`WALK_SPEED`, `RUN_SPEED`, `ACCELERATION`, `DECELERATION`, `RUN_INPUT_THRESHOLD`, `RUN_HOLD_TIME`, `ANIM_*`,
+`WALK_start` ni `Run_stop`. Sprint con Shift (`sprint_touch` para el táctil, aún sin botón en la UI). Compila.
 
 ### Pendiente de comprobar (importante)
 1. **El juego se cierra solo a los ~9 s** al lanzarlo desde un script sin interacción (sin stderr, sin `hs_err`).
