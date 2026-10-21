@@ -5,6 +5,7 @@ import static com.openpl.PL10.*;
 import com.forcex.FX;
 import com.forcex.anim.Animation;
 import com.forcex.anim.Animator;
+import com.forcex.anim.SkeletonNode;
 import com.forcex.app.Key;
 import com.forcex.core.gpu.Texture;
 import com.forcex.gfx3d.Camera;
@@ -82,9 +83,52 @@ public class Player {
 
     boolean onFoot = true;
     Animator animator;
+    // mano derecha, donde se sujeta el arma
+    private SkeletonNode hand_node;
+    // el juego lo activa mientras se dispara: el personaje encara la camara
+    boolean aiming = false;
 
-    Animation anim_walk, anim_walk_start, anim_idle, anim_run, anim_run_stop;
-    Animation anim_car_open, anim_car_getin, anim_car_getout, anim_car_sit;
+    Animation anim_walk, anim_walk_start, anim_idle, anim_run, anim_run_stop, anim_aim;
+    private boolean aim_animation = false;
+    // weapon.dat del AK47: "6 10 7" fotogramas a 30 fps = inicio y fin del bucle de disparo y fotograma del tiro
+    private static final float AIM_LOOP_START = 6f / 30f;
+    private static final float AIM_LOOP_END = 10f / 30f;
+    private static final float AIM_FIRE_TIME = 7f / 30f;
+    private float aim_prev_time = 0.0f;
+    // true en el frame en que la animacion de apuntar llega al fotograma de disparo
+    private boolean shot_event = false;
+
+    /** El juego dispara cuando la animacion lo indica; sin la pose de apuntar (en movimiento) dispara libre. */
+    public boolean canShoot() {
+        return !aim_animation || shot_event;
+    }
+    private boolean armed = false;
+    private Animation armed_idle, armed_walk, armed_walk_start, armed_run;
+    private Animation unarmed_idle, unarmed_walk, unarmed_walk_start, unarmed_run;
+
+    /** Con arma equipada se usan las animaciones de sostenerla; al cambiar vuelve a idle. */
+    public void setArmed(boolean value) {
+        if(armed == value) {
+            return;
+        }
+        armed = value;
+        anim_idle = value ? armed_idle : unarmed_idle;
+        anim_walk = value ? armed_walk : unarmed_walk;
+        anim_walk_start = value ? armed_walk_start : unarmed_walk_start;
+        anim_run = value ? armed_run : unarmed_run;
+        walking_animation = false;
+        walking_start = false;
+        run_animation = false;
+        stopping = false;
+        aim_animation = false;
+        animator.doAnimation(anim_idle, false);
+        animator.control.setLoop(true);
+        animator.control.speed = ANIM_BASE_SPEED;
+        animator.control.play();
+    }
+    Animation anim_car_open, anim_car_getin, anim_car_getout, anim_car_sit, anim_car_closedoor;
+    // cerrando la puerta desde dentro tras subir (CTaskSimpleCarCloseDoorFromInside en GTA SA)
+    private boolean closing_door = false;
     boolean exiting = false;
     // caminar hasta la puerta antes de abrirla
     private boolean approaching = false;
@@ -121,7 +165,9 @@ public class Player {
 
         player = player_obj;
 
-        animator = new Animator(dff.getSkeleton(dff.getFrameRoot()), dff.bones.size());
+        SkeletonNode skeleton = dff.getSkeleton(dff.getFrameRoot());
+        hand_node = findNode(skeleton, "R Hand");
+        animator = new Animator(skeleton, dff.bones.size());
         player_obj.setAnimator(animator);
         IFPReader ifp = new IFPReader("game/ped.ifp");
         for(int i = 0; i < ifp.animations.size();i ++) {
@@ -132,10 +178,22 @@ public class Player {
         anim_run = ifp.getAnimation("run_player", true);
         anim_run_stop = ifp.getAnimation("Run_stop", true);
         anim_idle = ifp.getAnimation("IDLE_stance", true);
-        anim_car_open = ifp.getAnimation("CAR_open_LHS", false);
+        // pose de fusil de GTA SA (el grupo "rifle" de weapon.dat para el AK47); vive en rifle.ifp de anim.img
+        anim_aim = new IFPReader("game/rifle.ifp").getAnimation("RIFLE_fire", true);
+        // juego de animaciones "armed": sostener un arma a un costado
+        armed_idle = ifp.getAnimation("IDLE_armed", true);
+        armed_walk = ifp.getAnimation("WALK_armed", true);
+        armed_walk_start = ifp.getAnimation("WALK_start_armed", true);
+        armed_run = ifp.getAnimation("run_armed", true);
+        unarmed_idle = anim_idle;
+        unarmed_walk = anim_walk;
+        unarmed_walk_start = anim_walk_start;
+        unarmed_run = anim_run;
+        anim_car_open =ifp.getAnimation("CAR_open_LHS", false);
         anim_car_getin = ifp.getAnimation("CAR_getin_LHS", false);
         anim_car_getout = ifp.getAnimation("CAR_getout_LHS", false);
         anim_car_sit = ifp.getAnimation("CAR_sit", true);
+        anim_car_closedoor = ifp.getAnimation("CAR_closedoor_LHS", false);
 
 //        anim_idle = ifp.getAnimation("run_player", true);
 
@@ -144,8 +202,27 @@ public class Player {
         animator.control.speed = ANIM_BASE_SPEED;
     }
 
+    private static SkeletonNode findNode(SkeletonNode node, String name) {
+        if(name.equalsIgnoreCase(node.name)) {
+            return node;
+        }
+        for(SkeletonNode child : node.children) {
+            SkeletonNode found = findNode(child, name);
+            if(found != null) {
+                return found;
+            }
+        }
+        return null;
+    }
+
+    /** Matriz de la mano derecha en espacio del modelo (ya animada), o null si no hay. */
+    public Matrix4f getHandMatrix() {
+        return hand_node == null ? null : animator.getBoneMap().get(hand_node);
+    }
+
     public void update(Camera camera, boolean[] keys, float delta) {
         if(!onFoot) {
+            updateSeated();
             return;
         }
         plGetCharacterfv(character, PL_TRANSFORM, player_transform.data, 16);
@@ -361,6 +438,51 @@ public class Player {
                 }
             }
 
+            // pose de disparo mientras se apunta quieto; al soltar o moverse vuelve a idle / caminar
+            shot_event = false;
+            if(aiming && !moving && !approaching && !stopping) {
+                if(!aim_animation) {
+                    animator.doAnimation(anim_aim, false);
+                    // como GTA SA: sube el fusil y luego repite solo el tramo de disparo del AK47 (weapon.dat)
+                    animator.control.setLoop(false);
+                    animator.control.speed = 1.0f;
+                    animator.control.play();
+                    aim_animation = true;
+                    aim_prev_time = 0.0f;
+                    walking_animation = false;
+                    walking_start = false;
+                    run_animation = false;
+                } else {
+                    if(animator.control.time >= AIM_LOOP_END) {
+                        animator.control.time = AIM_LOOP_START;
+                    }
+                    float t = animator.control.time;
+                    // el disparo sale al cruzar el fotograma de fuego en cada vuelta del bucle
+                    shot_event = aim_prev_time < AIM_FIRE_TIME && t >= AIM_FIRE_TIME;
+                    aim_prev_time = t;
+                }
+            } else if(aim_animation) {
+                aim_animation = false;
+                if(!moving) {
+                    animator.doAnimation(anim_idle, false);
+                    animator.control.setLoop(true);
+                    animator.control.speed = ANIM_BASE_SPEED;
+                    animator.control.play();
+                }
+            }
+
+            if(aiming && !approaching) {
+                // encara la direccion de la camara
+                float sin = player_direction.z * camera_forward.x - player_direction.x * camera_forward.z;
+                float cos = player_direction.x * camera_forward.x + player_direction.z * camera_forward.z;
+                float angle = (float) Math.toDegrees(Math.atan2(sin, cos));
+                float max_turn = TURN_SPEED * delta;
+                player_direction.rotY(Math.max(-max_turn, Math.min(max_turn, angle)));
+                player_direction.normalize();
+                player_transform.lookAt(player_direction, false);
+                plCharacterfv(PL_TRANSFORM, player_transform.data);
+            }
+
             Vector3f walk = player_direction.mult(move);
             plCharacter3f(PL_CHAR_WALK_DIRECTION, walk.x, walk.y, walk.z);
             plBindCharacter(0);
@@ -422,6 +544,7 @@ public class Player {
     // coloca al personaje junto a la puerta y reproduce bajar del auto; al terminar recupera el control
     public void startExitVehicle(Vector3f door_position, Vector3f facing) {
         exiting = true;
+        closing_door = false;
         door_target = 1.0f;
 
         current_speed = 0.0f;
@@ -443,10 +566,15 @@ public class Player {
         animator.control.play();
     }
 
+    // 0 antes de a, 1 despues de b, lineal entre ambos
+    private static float ramp(float x, float a, float b) {
+        return Math.max(0.0f, Math.min(1.0f, (x - a) / (b - a)));
+    }
+
     private void updateExiting() {
-        if(animator.control.time > anim_car_getout.getDuration() * 0.6f) {
-            door_target = 0.0f;
-        }
+        // la puerta se abre al empezar a bajar y se cierra al final, siguiendo la fase de la animacion
+        float phase = animationPhase();
+        door_target = ramp(phase, 0.0f, 0.3f) * (1.0f - ramp(phase, 0.65f, 0.95f));
         if(!animator.finished()) {
             return;
         }
@@ -459,6 +587,8 @@ public class Player {
     }
 
     private void updateEntering() {
+        // la puerta empieza a abrirse cuando la mano llega a la manija y queda abierta mientras sube
+        door_target = enter_stage == 0 ? ramp(animationPhase(), 0.3f, 0.7f) : 1.0f;
         if(!animator.finished()) {
             return;
         }
@@ -470,16 +600,33 @@ public class Player {
             animator.control.play();
         } else {
             entering = false;
-            door_target = 0.0f;
-            // queda sentado en el asiento mientras conduce (ver renderSeated)
-            animator.doAnimation(anim_car_sit, false);
-            animator.control.setLoop(true);
-            animator.control.speed = ANIM_BASE_SPEED;
+            // como GTA SA: ya sentado cierra la puerta desde dentro (CAR_closedoor) antes de sentarse a conducir
+            animator.doAnimation(anim_car_closedoor, false);
+            animator.control.setLoop(false);
+            animator.control.speed = 1.0f;
             animator.control.play();
+            closing_door = true;
             if(on_entered != null) {
                 on_entered.run();
             }
         }
+    }
+
+    // sentado: termina de cerrar la puerta y pasa a la pose de conducir
+    private void updateSeated() {
+        if(!closing_door) {
+            return;
+        }
+        door_target = 1.0f - ramp(animationPhase(), 0.35f, 0.75f);
+        if(!animator.finished()) {
+            return;
+        }
+        closing_door = false;
+        door_target = 0.0f;
+        animator.doAnimation(anim_car_sit, false);
+        animator.control.setLoop(true);
+        animator.control.speed = ANIM_BASE_SPEED;
+        animator.control.play();
     }
 
     // fase normalizada (0..1) de la animacion actual, para alinear ciclos al cambiar de estado

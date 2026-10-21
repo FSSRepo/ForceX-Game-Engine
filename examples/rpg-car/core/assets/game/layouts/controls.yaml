@@ -20,3 +20,16 @@ children:
     y: 22%
     visibility: gone
     onClick: onEnterExit
+
+  - type: button
+    id: fire
+    text: "Disparar"
+    width: 18%
+    height: 12%
+    textSize: 5%
+    textColor: "#ffffff"
+    background: "#ccd83a2e"
+    x: 17%
+    y: 22%
+    visibility: gone
+    onClick: onFire

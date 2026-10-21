@@ -9,9 +9,9 @@ public class DesktopLauncher extends ForceXApp
         DesktopLauncher launcher = new DesktopLauncher();
         FXAppConfig config = new FXAppConfig();
         config.title = "RPG Game";
-        config.fullscreen = true;
-        config.width = 1920;
-        config.height = 1080;
+        config.fullscreen = false;
+        config.width = 1280;
+        config.height = 720;
         launcher.initialize(new RPGCarGame(), config);
     }
 }

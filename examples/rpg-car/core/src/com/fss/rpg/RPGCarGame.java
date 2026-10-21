@@ -67,6 +67,13 @@ public class RPGCarGame extends Game implements InputListener {
 
     Vehicle vehicle;
     Player player;
+    Weapon weapon;
+    // clic derecho mantenido (dispara)
+    boolean fire_held = false;
+    // boton de disparo en pantalla: pulsado ahora, dedo que lo mantiene y aviso de pulsacion recien hecha
+    boolean fire_touch = false, fire_click = false;
+    int fire_pointer = -1;
+    Button btnFire;
     Scenery scenery;
     ParticleRenderer particles;
     SkyBox sky;
@@ -100,11 +107,13 @@ public class RPGCarGame extends Game implements InputListener {
 
         // Controles táctiles: se dibujan encima y reciben los toques desde onTouch
         inflater.setOnClickListener("onEnterExit", view -> toggleVehicle());
+        inflater.setOnClickListener("onFire", view -> fire_click = true);
         controls = (Layout) inflater.inflateFile("game/layouts/controls.yaml");
         controls.local.set(FX.gpu.getWidth() * 0.5f, FX.gpu.getHeight() * 0.5f);
         ctx.addUntouchableView(controls);
         joystick = (Joystick) inflater.findViewById("joystick");
         btnEnterExit = (Button) inflater.findViewById("enter_exit");
+        btnFire = (Button) inflater.findViewById("fire");
         int disc = createDiscTexture(128);
         joystick.setTextureID(disc);
         joystick.setKnobTextureID(disc);
@@ -186,6 +195,9 @@ public class RPGCarGame extends Game implements InputListener {
         }
 
         physics_objects.add(floor);
+
+        // fusil AN-94 flotando cerca del punto de aparicion
+        weapon = new Weapon(28f, 19f, terrain.heightAt(28f, 19f));
 
         // arboles y chimeneas sobre el terreno
         scenery = new Scenery(terrain, 2024);
@@ -388,7 +400,17 @@ public class RPGCarGame extends Game implements InputListener {
         for(Car car : cars) {
             car.vehicle.update(camera, deltaTime, car.nodes);
         }
+        // disparar: clic derecho mantenido, solo a pie y con el arma equipada
+        boolean can_shoot = player.onFoot && !player.entering && !player.exiting && weapon.equipped;
+        player.aiming = (fire_held || fire_touch) && can_shoot;
+        btnFire.setVisibility(can_shoot ? View.VISIBLE : View.GONE);
+        player.setArmed(weapon.equipped);
         player.update(camera, key_controls, deltaTime);
+        // el disparo sale en el fotograma de fuego de la animacion (ver Player.canShoot)
+        if(player.aiming && player.canShoot()) {
+            weapon.fire();
+        }
+        weapon.update(deltaTime, player.player.getPosition());
         updateDoor(deltaTime);
         camera.update();
 
@@ -433,6 +455,9 @@ public class RPGCarGame extends Game implements InputListener {
         }
 
         player.render(static_renderer);
+        if(player.onFoot || !weapon.equipped) {
+            weapon.render(static_renderer, player.player.getTransform(), player.getHandMatrix());
+        }
         if(!player.onFoot && vehicle.onVehicle) {
             Vector3f seat_forward = new Vector3f();
             Vector3f seat = vehicle.getDriverSeat(vehicle_nodes, seat_forward);
@@ -471,7 +496,8 @@ public class RPGCarGame extends Game implements InputListener {
     private Car door_car;
     private float door_open = 0.0f;
     private static final float DOOR_OPEN_ANGLE = -70f;
-    private static final float DOOR_SPEED = 2.5f;
+    // alta para que la puerta siga de cerca el objetivo que marca la fase de la animacion
+    private static final float DOOR_SPEED = 8f;
 
     private void updateDoor(float delta) {
         if(door_car == null) {
@@ -514,6 +540,24 @@ public class RPGCarGame extends Game implements InputListener {
             }
             return;
         }
+        // en escritorio el clic derecho llega como el puntero 1 (en Android el segundo dedo usa los tipos *_2)
+        if(pointer == 1) {
+            if(type == EventType.TOUCH_PRESSED) {
+                fire_held = true;
+                ox = x;
+                oy = y;
+                return;
+            } else if(type == EventType.TOUCH_DROPPED) {
+                fire_held = false;
+                return;
+            } else if(type == EventType.TOUCH_DRAGGING) {
+                // mientras se mantiene el boton no llega MOUSE_HOVER: la camara sigue girando
+                rotateCamera((x - ox) * MOVING_CAMERA * FX.gpu.getDeltaTime(), (y - oy) * MOVING_CAMERA * FX.gpu.getDeltaTime());
+                ox = x;
+                oy = y;
+                return;
+            }
+        }
         if(handleTouchControls(x, y, type, pointer)) {
             return;
         }
@@ -555,7 +599,11 @@ public class RPGCarGame extends Game implements InputListener {
             case EventType.TOUCH_PRESSED_2:
                 if(controls.testIsTouching(x, y)) {
                     controls.onTouch(x, y, EventType.TOUCH_PRESSED);
-                    if(joystick.isTouching() && joystick_pointer == -1) {
+                    if(fire_click) {
+                        fire_click = false;
+                        fire_touch = true;
+                        fire_pointer = pointer;
+                    } else if(joystick.isTouching() && joystick_pointer == -1) {
                         joystick_pointer = pointer;
                     } else {
                         button_pointer = pointer;
@@ -580,12 +628,18 @@ public class RPGCarGame extends Game implements InputListener {
                     oy = y;
                     return true;
                 }
-                return pointer == button_pointer;
+                return pointer == button_pointer || pointer == fire_pointer;
             case EventType.TOUCH_DROPPED:
             case EventType.TOUCH_DROPPED_2:
                 if(pointer == joystick_pointer) {
                     joystick.onTouch(x, y, EventType.TOUCH_DROPPED);
                     joystick_pointer = -1;
+                    return true;
+                }
+                if(pointer == fire_pointer) {
+                    controls.onTouch(x, y, EventType.TOUCH_DROPPED);
+                    fire_touch = false;
+                    fire_pointer = -1;
                     return true;
                 }
                 if(pointer == button_pointer) {
@@ -704,6 +758,7 @@ public class RPGCarGame extends Game implements InputListener {
 
     @Override
     public void destroy() {
+        weapon.destroy();
         plDestroyContext();
         ctx.destroy();
     }
