@@ -83,11 +83,17 @@ public class IFPReader {
         }
     }
 
+    /**
+     * Finds an animation by name prefix (case-insensitive).
+     *
+     * @param notRootPos True to stop the root bone's position from being applied to the pose. The
+     *                   position track is kept, so root motion can still be read with
+     *                   {@link com.forcex.anim.Animator#setRootMotion(boolean)}.
+     */
     public Animation getAnimation(String name, boolean notRootPos) {
-        name = name.toLowerCase();
+        String wanted = name.toLowerCase();
         for (Animation anim : animations) {
-            anim.name = anim.name.toLowerCase();
-            if (anim.name.startsWith(name)) {
+            if (anim.name.toLowerCase().startsWith(wanted)) {
                 if (notRootPos) {
                     anim.getRootBone().hasPosition = false;
                 }

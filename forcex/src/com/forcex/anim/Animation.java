@@ -75,4 +75,47 @@ public class Animation {
     public Bone getRootBone() {
         return bones.get(0);
     }
+
+    /**
+     * Registers an event at the given time. The {@link Animator} fires it each time the playback
+     * time crosses it (once per loop when the animation loops).
+     *
+     * @param time     Time in seconds, from the start of the animation.
+     * @param listener Receiver of the event.
+     */
+    public void addEvent(float time, AnimationEventListener listener) {
+        events.add(new Event(time, listener));
+    }
+
+    public void clearEvents() {
+        events.clear();
+    }
+
+    /**
+     * Fires the events whose time lies in (from, to]. Used by the Animator.
+     */
+    void fireEvents(float from, float to) {
+        for (int i = 0; i < events.size(); i++) {
+            Event e = events.get(i);
+            if (e.time > from && e.time <= to) {
+                e.listener.onAnimationEvent(this, e.time);
+            }
+        }
+    }
+
+    boolean hasEvents() {
+        return !events.isEmpty();
+    }
+
+    private final ArrayList<Event> events = new ArrayList<Event>();
+
+    private static class Event {
+        final float time;
+        final AnimationEventListener listener;
+
+        Event(float time, AnimationEventListener listener) {
+            this.time = time;
+            this.listener = listener;
+        }
+    }
 }

@@ -59,24 +59,30 @@ public class Bone {
      * @return An array containing the two closest KeyFrames.
      */
     public KeyFrame[] getFrameTime(float time) {
-        for (byte f = 0; f < keyframes.size(); f++) {
+        int next = findNextFrame(time);
+        return new KeyFrame[]{keyframes.get(prevFrameIndex(next)), keyframes.get(next)};
+    }
+
+    /**
+     * Index of the first keyframe whose time is at or after the given time, or the last one if time is beyond the end.
+     */
+    private int findNextFrame(float time) {
+        int size = keyframes.size();
+        for (int f = 0; f < size; f++) {
             if (time <= keyframes.get(f).time) {
-                if (f == 0) {
-                    if (keyframes.size() != 1) {
-                        return new KeyFrame[]{
-                                keyframes.get(keyframes.size() - 1), keyframes.get(f)};
-                    } else {
-                        return new KeyFrame[]{
-                                keyframes.get(f), keyframes.get(f)};
-                    }
-                } else {
-                    return new KeyFrame[]{
-                            keyframes.get(f - 1), keyframes.get(f)};
-                }
+                return f;
             }
         }
-        KeyFrame previus = keyframes.get(keyframes.size() - 1);
-        return new KeyFrame[]{previus, previus};
+        return size - 1;
+    }
+
+    // keyframe anterior a next: el primero envuelve al ultimo, igual que antes
+    private int prevFrameIndex(int next) {
+        int size = keyframes.size();
+        if (size == 1) {
+            return 0;
+        }
+        return next == 0 ? size - 1 : next - 1;
     }
 
     /**
@@ -86,9 +92,9 @@ public class Bone {
      * @param time The time at which to interpolate.
      * @return The interpolation factor.
      */
-    private float getTime(KeyFrame[] keys, float time) {
-        float totalTime = keys[1].time - keys[0].time;
-        float currentTime = time - keys[0].time;
+    private float getTime(KeyFrame a, KeyFrame b, float time) {
+        float totalTime = b.time - a.time;
+        float currentTime = time - a.time;
         return currentTime / totalTime;
     }
 
@@ -99,17 +105,38 @@ public class Bone {
      * @return The interpolated KeyFrame.
      */
     public KeyFrame interpolate(float time) {
-        KeyFrame[] keys = getFrameTime(time);
-        float pcnt = getTime(keys, time);
+        int next = findNextFrame(time);
+        KeyFrame a = keyframes.get(prevFrameIndex(next));
+        KeyFrame b = keyframes.get(next);
+        float pcnt = getTime(a, b, time);
         KeyFrame key = new KeyFrame();
         if (hasPosition) {
-            key.position = keys[0].position.lerp(keys[1].position, pcnt);
+            key.position = a.position.lerp(b.position, pcnt);
         } else {
             key.position = new Vector3f();
         }
-        key.rotation = keys[0].rotation.slerp(keys[1].rotation, pcnt);
+        key.rotation = a.rotation.slerp(b.rotation, pcnt);
         key.time = pcnt;
         return key;
+    }
+
+    /**
+     * Samples the stored position track at the given time, ignoring {@link #hasPosition}
+     * (used to extract root motion even when the position is not applied to the pose).
+     *
+     * @param time Time in seconds.
+     * @param dest Receives the position.
+     * @return False when the bone has no position data.
+     */
+    public boolean samplePosition(float time, Vector3f dest) {
+        if (keyframes.isEmpty() || keyframes.get(0).position == null) {
+            return false;
+        }
+        int next = findNextFrame(time);
+        KeyFrame a = keyframes.get(prevFrameIndex(next));
+        KeyFrame b = keyframes.get(next);
+        dest.set(a.position.lerp(b.position, getTime(a, b, time)));
+        return true;
     }
 
     /**
