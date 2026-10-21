@@ -8,10 +8,10 @@ dt SA: 1.0 = 20 ms.
 
 1. Campos de `CVehicleAnimGroup` (tabla 0xc1cdc0): HECHO (ver sec. 1)
 2. `CVehicle::ProcessOpenDoor` / angulo de puerta: HECHO (sec. 2)
-3. LineUp / CarAlign / GoToCarDoorAndStandStill: PENDIENTE
-4. CTaskComplexEnterCar / LeaveCar (estados y condiciones): PENDIENTE
-5. GetIn / GetOut / SetPedInAsDriver (root motion vs interpolacion, enganche): PENDIENTE
-6. Animaciones de conduccion (CTaskSimpleCarDrive): PENDIENTE
+3. LineUp / CarAlign / GoToCarDoor: PARCIAL (sec. 3)
+4. EnterCar / LeaveCar: PARCIAL (sec. 4: IDs completos, arbol incompleto)
+5. GetIn / GetOut / SetPedInAsDriver: HECHO (sec. 5)
+6. Animaciones de conduccion: PARCIAL (sec. 6)
 
 ## 0. IDs de animacion de vehiculo (grupo `stdcaranims`, indice 88 de ms_aAnimAssocDefinitions @0x8aa5a8)
 
@@ -143,8 +143,12 @@ CDoor::GetAngleOpenRatio 0x6f47e0: openAngle==0 ? 0 : angle/openAngle
 ```
 `CAutomobile::OpenDoor` 0x6a6ae0 ademas aplica el angulo al frame del nodo de la puerta (rotacion sobre el eje `+0x5c2`) y, si se abre del todo desde animacion, reproduce sonido
 (0x42700000=60 / 0x42f00000=120 son parametros del emisor de particulas/sonido [NV]).
-Angulos maximos (en ctor 0x6b0a90): +0x5b8 = +-0x3f71463b = +-0.9448 rad (54.1 grados) para las puertas de coche (se pone el signo por lado); capot +0x5d0=0x3fc90fdb (pi/2) o -0.9448 [V valores / NV cual puerta]. 
-Pendiente: tabla exacta puerta->angulo (leer 0x6b0dbe-0x6b0e45 con dis.ps1 -Va 0x6b0d90 -Len 0x120).
+Indice de puerta d -> struct en `CAutomobile + 0x5b8 + 0x18*d` (0 capot, 1 maletero, 2 FL, 3 FR, 4 RL, 5 RR; `GetDooorAngleOpenRatio` 0x6a2270 hace ecx+(d*3+0xb7)*8) [V].
+Angulo maximo `openAngle` (CDoor+0), fijado en el ctor `CAutomobile::CAutomobile` 0x6b0a90 (0x6b0ca8-0x6b0e45) [V]:
+- puertas delanteras: FL(2) = -1.2566 rad (-72 grados, 0xbfa0d97c) y FR(3) = +1.2566 (0x3fa0d97c) por defecto; si el bit1 de `veh+0x429` esta puesto (derivado del flag de handling `+0xcc & 2`) -> -pi/2 / +pi/2 (90 grados). closedAngle=0, eje=2 (`+0x5f2`), dir=0x14 (`+0x5f0`).
+- puertas traseras RL(4)/RR(5): -1.2566/+1.2566 por defecto; si bit0 de `veh+0x429` (handling `+0xcc & 1`): -pi/2/+pi/2 (0x6b0d50-0x6b0da4).
+- capot (0): +-0.9448 rad (54.1 grados; 0x3f71463b): negativo si handling `+0xcc & 0x10`; maletero (1): -0.9448 por defecto, +pi/2 si handling `& 0x40`, 0 con `& 0x20` (hanging boot).
+Resumen: angulo de puerta delantera = ratio * 1.2566 rad (o 1.5708) con signo segun lado [V].
 
 ## 3. GetPositionToOpenCarDoor (0x64e740) [V]
 `CVector* GetPositionToOpenCarDoor(CVector* out, CVehicle* veh, int doorNode)`; doorNode 8=RF 9=RR 10=LF 11=LR 0x12=maletero/otro.
@@ -156,5 +160,129 @@ Pendiente: tabla exacta puerta->angulo (leer 0x6b0dbe-0x6b0e45 con dis.ps1 -Va 0
 Para bicis/motos (veh+0x590==9 o handling flag bit 9) usa otra rama (0x6bf230).
 (Detalle completo: ver pseudocodigo Ghidra `FUN_0064e740`; aqui resumido.)
 
+## 3. Alineacion y llegada a la puerta
+
+### 3.1 CTaskSimpleCarAlign (ctor 0x645b40, ProcessPed 0x64d6d0) [V]
+Campos: +8 bool terminado, +0xc CAnimBlendAssociation*, +0x10 vehiculo, +0x14 CVector, +0x20 puerta (nodo 8..11/0x12), +0x24 CTaskUtilityLineUpPedWithCar*.
+`ProcessPed`: si `terminado` o sin vehiculo -> true (fin). Si no hay anim (+0xc==0): llama 0x645cb0 (orienta al ped) y 0x64ac00 (arranca la anim CAR_align*; el callback 0x645e40 pone +0xc=0 y +8=1 al terminar) y devuelve false. Mientras corre la anim: `SetPedPosition` (0x645c70) llama cada frame `GetPositionToOpenCarDoor(&pos, veh, puerta)` y `LineUp::ProcessPed(ped, veh, assoc)` (0x6513a0). La tarea acaba cuando acaba la anim CAR_align_* (duracion = la de ped.ifp).
+0x645cb0 (inicio): si el coche esta quieto (`veh+0x590`==0) calcula la direccion ped->puerta en XY y, si el producto escalar con la direccion lateral (x -1 para puertas 10/11) esta en (0, 0.1), pone `ped.targetRot(+0x55c)` y `ped.curRot(+0x558)` = atan2 hacia el punto (giro instantaneo) [V estructura, NV umbral exacto].
+
+### 3.2 CTaskUtilityLineUpPedWithCar::ProcessPed 0x6513a0 (ped, veh, assoc) [V parcial]
+Estado (this): +0..+8 CVector (velocidad residual), +0xc float Z objetivo, +0x10 u32 timestamp fin del giro (ms, CTimer 0xb7cb84), +0x14 modo (0,1,2), +0x18 nodo de puerta.
+1. Rumbo objetivo `ped+0x55c` = atan2(veh.fwd.y, -veh.fwd.x) (rumbo del coche); puertas 8/9 (derecha) -PI [`fsub 3.14159`], puerta 0x12 (maletero/otro) +PI, resto: rumbo del coche (puertas izquierdas) [V formas, NV signo exacto]. Con modo +0x14==2 no se recalcula.
+2. Progreso `p = assoc.currentTime / hier.totalTime (hier+0x10)`; tiempo critico `Tc = ComputeCriticalBlendTime(grupo, animId)` (0x64e4b0). Si |Tc| >= 10 se interpreta como Tc' = |Tc| - 11 (p.ej. 11.5 -> 0.5) con signo [NV]; si no Tc' = |Tc|. Con eso se calcula un factor de mezcla Z `r` (0..1): getin (0x167-0x16b): r = 1 - p/Tc' (limitado), getout (0x175-0x178): r = 1 - clamp(p/Tc') ...; align/open: r=0 (salvo Tc>=10); jacked/pullout/etc: valores 0/1 segun grupo y flag 32 (`CVehicleAnimGroup flags>>5`) [V estructura (0x651503-0x651885), NV semantica fina].
+3. Punto destino: modo 0 -> `GetPositionToOpenCarDoor`; otro -> `0x650a80(veh, ped, factor, anim)`. La Z destino = ped.Z - halfHeight(vfunc +0xd4) + 1.0, buscando suelo (0x616920) y limitada por debajo a (suelo - 0.5); en moto (+0x590==5) +1.0.
+4. Rotacion: mientras `CTimer ms < +0x10`: `frac = (+0x10 - ahora) * (1/600)` (0.0016667); `ped.rot(+0x558) = curr - wrap(curr - target) * (1 - frac)` con envoltura +-2PI (6.28319); al expirar `+0x558 = +0x55c` [V].
+5. Durante getin/getout (0x167-0x16a, 0x175-0x178) la posicion sigue el **root motion** de la anim: toma el ultimo keyframe (ComputeAnimDoorOffsets, quaternion slerp 0x7eb5c0/0x7ec220 con polinomio) y mueve al ped a `puerta + R_veh * offset * p`; Z mezclada por `r`. Se escribe la posicion (0x54f610) cada frame.
+Detalle numerico del polinomio de interpolacion (0x651ee4-0x651f67, constantes 0x86d2a4-0x86d2b0 y 0x864e0c, 0x85f0a0) NO decodificado: es el polinomio de aproximacion de sin() del slerp de quaternions de RenderWare [NV].
+
+### 3.3 CTaskComplexGoToCarDoorAndStandStill (ctor 0x645780, CreateFirstSubTask 0x64d440) [V]
+Campos: +0xc vehiculo, +0x10 puerta (nodo), +0x14 bool, +0x18 moveState, +0x28 timestamp, +0x34 indice de puerta, +0x38 CVector punto, +0x44 puerta fijada (0 = elegir la mas cercana), +0x48/+0x49 flags.
+CreateFirstSubTask: 1) 0x6458a0 (si no es posible -> 0xcb StandStill). 2) `+0x48` -> 0xca Pause(1). 3) Punto = `GetPositionToOpenCarDoor` (si hay puerta fijada +0x44) o `GetNearestCarDoor` 0x6528f0 / `GetNearestCarPassengerDoor` 0x650bb0; se guarda en +0x38 y se marca timestamp. 4) `0x651210(ped,veh,pos)` (punto dentro de cajas de colision del coche) -> true: 0x389 CTaskComplexMoveFollowPointRoute; false: 0x384 CTaskSimpleGoToPoint(pos, moveState). Puerta ocupada: 0x32a o 0x33c.
+IDs (CreateSubTask 0x64a5f0): 0xca SimplePause(1), 0xcb SimpleStandStill(1,0,0,8.0), 0x32a WaitForDoorNotToBeInUse, 0x33c CarGoToPointNearDoorUntilDoorNotInUse, 0x384 SimpleGoToPoint, 0x389 MoveFollowPointRoute.
+Tolerancia/radio de llegada y ControlSubTask (0x64a820): PENDIENTE.
+
+## 4. CTaskComplexEnterCar
+
+### 4.1 Tabla ID -> subtarea (CreateSubTask 0x63e040; ctor entre parentesis) [V]
+| ID | clase |
+|---|---|
+| 0xc8 | CTaskComplexFallAndGetUp (0x6786c0) |
+| 0xcb | CTaskSimpleStandStill (0x62f310) |
+| 0x2c0 | CTaskComplexLeaveCar (0x63b8c0) |
+| 0x2cb | 0x63b5e0 (nombre del simbolo: CTaskComplexEnterBoatAsDriver; ctor es de la 2a rama) [NV] |
+| 0x2cf | CTaskSimpleCarDriveTimed (0x5ff940) |
+| 0x320 | CTaskComplexGoToCarDoorAndStandStill (0x645780) |
+| 0x321 | CTaskSimpleCarAlign (0x645b40) |
+| 0x322 | CTaskSimpleCarOpenDoorFromOutside (0x645e50) |
+| 0x323 | CTaskSimpleCarOpenLockedDoorFromOutside (0x646070) |
+| 0x324 | CTaskSimplePickUpBike (0x6461b0) |
+| 0x325 | CTaskSimpleCarCloseDoorFromInside (0x646300) |
+| 0x326 | CTaskSimpleCarCloseDoorFromOutside (0x6464f0) |
+| 0x327 | CTaskSimpleCarGetIn (0x646690) |
+| 0x328 | CTaskSimpleCarShuffle (0x646810) |
+| 0x329 | ninguna |
+| 0x32a | CTaskSimpleCarWaitForDoorNotToBeInUse (0x646b70) |
+| 0x32b | CTaskSimpleCarSetPedInAsPassenger (0x646fe0) |
+| 0x32c | CTaskSimpleCarSetPedInAsDriver (0x6470e0) |
+| 0x330 | CTaskSimpleCarSetPedOut (0x6478b0) |
+| 0x334 | CTaskSimpleCarSlowDragPedOut (0x647fe0) |
+| 0x33d | CTaskSimpleWaitUntilPedIsOutCar (0x649450) |
+| 0x516 | evento (0x63a110) |
+(0x32d-0x32f, 0x331-0x333: mismo `jmp` a default). Jump tables: 0x63e960 (0x320..0x324), 0x63e974 (0x326..0x32c).
+
+### 4.2 CreateNextSubTask (0x63e990; jump table 0x63f914 para 0x320..0x323) [V parcial]
+- Tras 0x320 (GoToCarDoor): si llego ([sub+0x49]) toma la puerta (this+0x14=sub+0x34) y el punto (this+0x2c=sub+0x38); `CVehicle::AnyOfDoorsReady` (0x64ec90); si hay ocupante vivo en el asiento objetivo -> espera 0x32a o jack; si puede entrar: SetVehicleFlags (0x63ab90, 0x63ac10, 0x63ac80, 0x63acc0) y crea **0x321 Align** (salvo moto `veh+0x590==9` o `veh+0x594==2`, donde delega en vtbl+0x2c).
+- Tras 0x321 Align: `CreateNextSubTask_AfterSimpleCarAlign` 0x63f970 decide abrir (0x322; 0x323 si puerta bloqueada; 0x324 moto).
+- Tras 0x323 (bloqueada): guarda el float +0x48 en `veh+0x3d0` y crea 0xcb StandStill.
+- Tras 0x322: si el coche se mueve (|v_xy| de `veh+0x44/+0x48` > umbrales `[0x86f104]`/`[0x86f108]`, por ped no-jugador/jugador) se cancela (0xd0/0x334 SlowDragPedOut); si hay otro ocupante -> 0x334; si libre: 0x327 GetIn -> 0x32c/0x32b SetPedInAs* -> 0x325 CloseDoorFromInside. Si el flag de grupo "no cerrar tras subir" (bit1 en +0x8) se omite 0x325.
+[Arbol completo 0x63f1e3..0x63f8b8 y ControlSubTask 0x63a890: PENDIENTE.]
+
+Todos los GetTaskType (leidos de las funciones `mov eax,id; ret`) [V]: 0x2bc EnterCarAsPassenger, 0x2bd EnterCarAsDriver, 0x2c0 LeaveCar, 0x2c1 LeaveCarAndDie, 0x2c2 LeaveCarAndFlee, 0x2c3 LeaveCarAndWander, 0x2c5 SimpleCarDrive, 0x2cd EnterAnyCarAsDriver, 0x2ca LeaveAnyCar, 0x2cf SimpleCarDriveTimed, 0x320 GoToCarDoorAndStandStill, 0x321 CarAlign, 0x322 CarOpenDoorFromOutside, 0x323 CarOpenLockedDoorFromOutside, 0x324 PickUpBike, 0x325 CarCloseDoorFromInside, 0x326 CarCloseDoorFromOutside, 0x327 CarGetIn, 0x328 CarShuffle, 0x329 CarWaitToSlowDown, 0x32a CarWaitForDoorNotToBeInUse, 0x32b SetPedInAsPassenger, 0x32c SetPedInAsDriver, 0x32d CarGetOut, 0x32e CarJumpOut, 0x32f CarForcePedOut, 0x330 CarSetPedOut, 0x334 CarSlowDragPedOut, 0x335 CarSlowBeDraggedOut, 0x336 CarSetPedSlowDraggedOut, 0x337 ComplexCarSlowBeDraggedOut, 0x33c CarGoToPointNearDoorUntilDoorNotInUse, 0x33d WaitUntilPedIsOutCar, 0x341 WaitUntilPedIsInCar, 0x342 CarFallOut. Otros: 0xca Pause, 0xcb StandStill.
+
+### 4.3 CTaskComplexLeaveCar (ctor 0x63b8c0; CreateFirstSubTask 0x641fc0; CreateNextSubTask 0x6419f0; ControlSubTask 0x6421b0; CreateSubTask 0x641530) [V parcial]
+ctor(veh, door, delayTime(ms), bool leaveAsDriverFlag?, bool dontCloseDoor?): campos +0xc veh, +0x10 puerta (indice 0..3: 0 conductor, 1 pasajero delantero, 2/3 traseros; se resuelve a nodo), +0x14 tiempo de espera/frenado, +0x18 bool (hurry/"force"), +0x19 bool "no cerrar la puerta", +0x1a bool, +0x24 = 0xf (tiempo de pausa), +0x28 = 4.0f, +0x2c = 1.0f (parametros de blend de salto) [V valores, NV significado exacto].
+CreateFirstSubTask: ped muerto (`0x530`==0x3f) o fuera del coche -> Pause (0xca, -1). Barco (veh+0x590==5) -> subtarea de salir del barco (0x63bb60). Si no -> **CTaskSimpleCarDriveTimed(veh, +0x14)** (0x2cf): sigue conduciendo/frenando hasta tiempo o hasta que el coche baje de velocidad.
+ControlSubTask: si el ped NO esta ya fuera (flag `ped+0x46c bit 0x100` = en vehiculo) y la subtarea actual no es 0x330/0x32e/0xce/0xd4 -> fuerza CreateNext con 0x330 (SetPedOut). Si subtarea es 0x329 y `+0x18==0` hay un abort manual.
+CreateNextSubTask (0x6419f0) por subtarea actual:
+- tras 0x2cf DriveTimed: si [+0x1a] -> 0xd4 sino 0x330 (o sigue con 0x329 WaitToSlowDown).
+- 0x329 WaitToSlowDown: pregunta al coche (vtbl+0xe4) si puede salir (volcado?); sino espera (0x32a). Elige puerta: `CCarEnterExit::IsRoomForPedToLeaveCar` (0x6504c0) por asiento: conductor (veh+0x460) puerta 0, pasajero (0x464) 1, trasero (0x468/0x46c) 2/3 (jump table 0x641f84 con tests de `veh+0x486` bits 1,2,4,8 = asiento bloqueado). Guarda [+0x10]=puerta valida.
+- Si hay puerta valida -> (opcional 0x337 SlowBeDraggedOut si [+0x1a]) -> **0x32d CarGetOut**; si no hay hueco -> **0x32e CarJumpOut** (si el coche esta volcado o a mucha velocidad: `veh+0x4f8`/estado) o 0x32f ForcePedOut.
+- tras 0x32d GetOut: si `[+0x19]==0` y puerta con hoja (`CCarEnterExit::CarHasDoorToCloseOnExit` 0x64ee10) y `veh+0x4f8 != 1` -> **0x326 CarCloseDoorFromOutside**; luego 0x330 SetPedOut (si ocurre cierre se hace `DamageManager::SetDoorStatus`).
+- tras 0x326: 0x330 SetPedOut -> (si [+0x1a]) 0xd4 con parametros 0xf / 1000.0 / 0.5 (anim de caida/espera) -> si coche no es barco/bici y no `[+0x30]`: 0xce o termina (null).
+La regla "puerta bloqueada / coche en movimiento / prisa": el salto (0x32e) y 0xd4 dependen de [+0x1a] y de `veh+0x594` (clase de vehiculo: 0xa..), y `CarJumpOut` se escoge cuando `veh` esta en movimiento y no hay puerta libre [NV: condiciones exactas no verificadas, ver 0x641c89-0x641d3a].
+
+## 5. GetIn / GetOut / SetPedInAsDriver
+
+### 5.1 Animaciones y blend [V]
+- Todas las anims de entrada/salida se arrancan con `CAnimManager::BlendAnimation(ped.clump(+0x18), assocGroup=CVehicleAnimGroup::GetGroup(animId), animId, blendDelta)` (0x4d4610) y registran un callback de fin con `CAnimBlendAssociation::SetFinishCallback` (0x4cebe0).
+- blendDelta: open/closedoor/close/getin/shuffle = **4.0** (0x40800000, entrada de blend en 0.25 s); getout = **1000.0** (0x447a0000, corte instantaneo); alguna (cerrar, 0x64af13/0x64bf2e) 8.0 (0x41000000).
+- Seleccion de anim por puerta (nodo): open: 10->0x163 8->0x164 11->0x165 9->0x166; getin: 10->0x167 8->0x168 11->0x169 9->0x16a, 0x12->0x16b; closedoor(dentro): 10->0x16f 8->0x170 11->0x171 9->0x172; getout: 10->0x175 8->0x176 11->0x177 9->0x178; close(fuera): 10->0x17c 8->0x17d 11->0x17e 9->0x17f. (LHS = puertas izquierdas 10/11; RHS = derechas 8/9; "delantera" = 10/8, trasera = 11/9.)
+- Si el coche esta volcado/casi (CarGetOut 0x647330: `veh+0x590==0` y 0x463830 true, con la componente up.z del coche > -0.5 (puertas 10/11 usan 0x858f40=-0.5; otras 0.5)) se usa `CAR_crawloutRHS` (anims default-group ids 108/109, grupo 0) en lugar de CAR_getout [V].
+- Fin de getin/getout: el callback (0x6467f0 para GetIn; 0x647480 GetOut) pone `done=1`, `assoc=null` y fija blendDelta = -1000 (0xc47a0000) para cortarla.
+
+### 5.2 Posicion del ped durante getin/getout [V]
+`SetPedPosition` de GetIn (0x6467a0) y GetOut (0x6472f0) y de Open/Close puertas (0x645f80, 0x6463f0, 0x6465e0) llaman TODOS a `CTaskUtilityLineUpPedWithCar::ProcessPed` (sec. 3.2) cada frame: el ped NO sigue el root motion crudo del IFP; el motor fuerza la posicion/rotacion: posicion = punto de puerta + offset de root motion (ultimo keyframe de la anim escalado por el progreso p) y rumbo del coche con giro suave. En GetOut: si la anim ya termino (blend==0, `[assoc+0x18]==0`) llama `CPed::SetPedPositionInCar` solo si no hay anim.
+Progreso GetIn: `p = assoc.currentTime / hierarchy.totalTime` (0x6467c0; 1.0 si done).
+Empuje al coche (moto, `veh+0x594==0xa`) durante GetIn: mientras `t < 10*0.0333=0.3333 s` (0x8d2ed4 * 0x858f10) aplica a la moto una fuerza `dt * veh.mass(+0x8c) * 0.01 * ped.right` (0x5429f0, ApplyMoveForce) [V].
+GetIn al terminar: `ped.flags(+0x40) |= 0x800000|0x40000`, `veh+0x42a &= ~0x20` (marca vehiculo ocupado) [V valores, NV nombres de flags]. GetOut al terminar: se revierten (`&= ~0x800000; &= ~0x40000; veh+0x42a |= 0x20`).
+GetOut cada frame con blend==1.0 (`assoc+0x18`): `ped+0x46c |= 0x2000`; y si la puerta debe abrirse (flag `[+9]` calculado por 0x64edd0(veh,puerta)) y no es salto (`[+0x10]==0`): llama `veh->ProcessOpenDoor(ped, puerta, grupo, animId, assoc.currentTime)` (vtbl+0x70). Idem GetIn/Open/Close llaman el mismo virtual (ver sec. 2). Es decir, **la puerta se anima por el tiempo de la anim (segundos)**, no por interpolacion propia.
+
+### 5.3 CTaskSimpleCarSetPedInAsDriver::ProcessPed 0x64b950 (el 'enganche' al asiento) [V]
+Se ejecuta UNA vez (devuelve true) tras terminar GetIn (y tras Shuffle si aplica):
+1. `ped.attachedVehicle(+0x58c) = veh` (con conteo de refs).
+2. Si ya hay otro conductor y no esta en tareas de entrar/salir (0x2c0,0x338,0x2c1,0x33a) lo expulsa con CTaskSimpleCarSetPedOut.
+3. `ped.targetRot(+0x55c) = ped.rot(+0x558)`.
+4. Si `this+0x18` (colocar en el centro): `ped.pos = veh.pos`.
+5. `CVehicle::SetDriver(ped)` (0x6d16a0 => veh+0x460 = ped), `ped+0x46c |= 0x100` (bInVehicle), jugador: `playerData+0x8d = 1`, veh+0x42a |= 2 (ocupado/robado), vida del vehiculo +0x45c: 0xffff -> 0x3a98 (15000 ms), etc.
+6. `CPed::SetPedPositionInCar` (0x5df910) [ver 5.4], `ped.bUsesCollision(+0x1c bit0) = 0`, `ped.flags +0x46c bit 0x2000` segun `veh+0x429 & 4` salvo modelo 0x1af.
+7. `CCarEnterExit::RemoveGetInAnims` (0x64f6e0) y `AddInCarAnim` (0x64f720, ver sec. 6): anim de sentado con blend 1000 (instantaneo).
+8. Crea `CTaskSimpleCarDrive(veh, this+0x14, 0)` (size 0x60, ctor 0x63c340) y lo pone como tarea primaria por defecto (slot 4 = TASK_PRIMARY_DEFAULT) via 0x681af0.
+9. Si es policia y el coche policial: evento de robo (0x4b1740/0x4b17f0) [NV].
+
+### 5.4 CPed::SetPedPositionInCar (0x5df910) [V]
+Cada frame que el ped esta dentro, `ped.pos = vehMatrix * seatOffset` + pequeno offset y `ped.rot = rumbo del coche` (atan2(fwd.y, -fwd.x)), escribiendo `ped+0x558` y `+0x55c`. `seatOffset` viene de `modelInfo+0x5c` (tabla de posiciones de asiento de CVehicleModelInfo, 'dummies' ped_frontseat/backseat): conductor = entrada [0] (`+0x30` salvo si `modelInfo+0x3c==5`), x NEGADA salvo moto/barco (`veh+0x590` 5 o 9); pasajero delantero (+0x464) = entrada +0x30 o +0x3c segun clase; traseros (+0x468,+0x46c) = entrada +0x3c (x negada para +0x468). Motos (`veh+0x594==0xa`): z -= |veh+0x814| * 0x858cdc. Modelo 0x214 (cierto camion) ajusta z con el eje. Para el grupo anim 0x65 ('van', bancos laterales) el ped trasero gira: rumbo -pi/2 (+0x468) / +pi/2 (+0x46c).
+La Z/XY exacta de cada asiento depende del modelo (vehicles.dff dummies) => no son constantes del exe.
+
+## 6. Animaciones al conducir [V parcial]
+`CCarEnterExit::AddInCarAnim(veh, ped, isDriver)` 0x64f720 usa `BlendAnimation(clump, group, id, 1000.0)`:
+| caso | grupo/anim |
+|---|---|
+| vehiculo con grupo propio (vtbl+0xbc != null) | grupo del vehiculo, id 0xc2 (194) |
+| conductor barco (`veh+0x590==5`) | default, 0x51 = DRIVE_BOAT |
+| conductor coche normal | default, 0x3c = CAR_sit |
+| conductor, `veh+0x429 & 8` (low rider) | default, 0x3d = CAR_Lsit |
+| pasajero | default, 0x40 (64) normal / 0x41 (65) si bit 8 |
+Nombres de default group (`ped.ifp`) para ids 60-98 [V pareo nombre-id por indice de las tablas 0x8d0f90 / 0x8a7788]: 60 CAR_sit, 61 CAR_Lsit, 62 CAR_sitp?, 63 CAR_sitpLO?, 64 CAR_sit_weak?, 65 CAR_sit_pro? (el pareo nombre<->id de 62..65 esta cruzado entre tablas: nombres en orden sit_weak,sit_pro,sitp,sitpLO con ids 64,65,62,63; semantica de pasajero [NV]), 66 DRIVE_L, 67 Drive_R, 68 Drive_LO_l, 69 Drive_LO_R, 70 Drive_L_weak, 71 Drive_R_weak, 72 Drive_L_pro, 73 Drive_R_pro, 74 Driveby_L, 75 Driveby_R, 76 DrivebyL_L, 77 DrivebyL_R, 78 CAR_LB (mirar atras), 79 CAR_LB_weak, 80 CAR_LB_pro, 81 DRIVE_BOAT, 82-84 DRIVE_BOAT_L/R/back, 85 Drive_L_slow, 86 Drive_R_slow, 87-90 weak/pro slow, 91 Drive_truck, 92 Drive_truck_L, 93 Drive_truck_R, 94 Drive_truck_back, 95 Kart_drive, 96 Kart_L, 97 Kart_R, 98 Kart_LB. 108/109 CAR_crawloutRHS, 110/111 CAR_rollout_LHS/RHS (default group), 169/170 Smoke_in_car/pass_Smoke_in_car, 99-106 BIKE_*.
+Variantes weak/pro/slow/LO se eligen por estilo de conduccion (walkstyle del ped, low-rider) y velocidad [NV]. Dos IDs de coche relevantes en CarDrive: cierre de ventana/puerta 'rolldoor' 0x182 con blend 1.0: `CTaskSimpleCarDrive::ProcessPed` llama `veh->ProcessOpenDoor(driver, 10, group, 0x182, 1.0)` (puerta 10, anim rolldoor, t=1.0 => puerta cerrada) al subir (0x644806-0x64482a) y cada ~, y `StartBopping` (cabeceo con musica). `CTaskSimpleCarDrive::SetPedPosition` (0x63c770): si hay LineUp util (this+0x10) lo ejecuta con la anim asociada (ids de la tabla 0x8d2e9c..0x8d2ecc) durante los primeros frames y luego lo borra.
+NO resuelto: el blend de volante (DRIVE_L/R segun giro, LB al mirar atras): se hace en `CTaskSimpleCarDrive::ProcessPed` 0x644470 (usa `CAnimBlendAssociation` por tablas) o en `CAutomobile` [no localizado].
+
 ## Estado
-(Actualizado a media sesion; ver secciones 3..6 por completar.)
+Resuelto [V]: 0 (IDs), 1 (todos los campos y el origen; algoritmo de offsets), 2 (ProcessOpenDoor y angulos), 3.1 (Align), 5.1-5.4, 4.1 (tabla de IDs), parte de 3.3, 4.2, 4.3, 6.
+Parcial / no resuelto:
+- Valores numericos de ComputeAnimDoorOffsets (dependen de ped.ifp; hay que extraer el ultimo keyframe del hueso raiz de CAR_getin_LHS/RHS y CAR_getout_*, p.ej. parseando `D:\\Games\\GTA San Andreas\\anim\\ped.ifp` (formato ANP3) o con gtasa tools) y de los seatPos por modelo (vehicles.dff).
+- LineUp::ProcessPed: constantes del polinomio de slerp y semantica exacta del tiempo critico negativo/>=10 (0x651503-0x651885) y signo del rumbo por puerta (0x651421-0x6514b0).
+- Tolerancias de llegada de GoToCarDoorAndStandStill (`ControlSubTask` 0x64a820; radio de `CTaskSimpleGoToPoint` 0x667cd0 y moveState +0x18) y distancia a la que se inicia la entrada (`CTaskComplexEnterCar::CreateFirstSubTask`, 0x640xxx; `IsPlayerToQuitCarEnter` 0x64f240).
+- Arbol completo de CreateNextSubTask de EnterCar (0x63f1e3-0x63f8b8) y ControlSubTask 0x63a890; condiciones exactas de LeaveCar (0x641c89-0x641d3a).
+- Steering anims (6).
+Pasos para retomar: `powershell -NoProfile -File tools\\re\\dis.ps1 -Va 0x63f1e0 -Len 0x6e0` (EnterCar next), `-Va 0x64a820 -Len 0x3c0` (GoToCarDoor Control), `-Va 0x640xxx` buscar `CTaskComplexEnterCar::CreateFirstSubTask` con `Grep CreateFirstSubTask gta_sa_symbols.tsv`, `-Va 0x651ee0 -Len 0x1a0` (polinomio slerp), `-Va 0x644470 -Len 0x9b0` (CarDrive). Scripts python auxiliares (lectura de tablas por VA) estaban en el scratchpad de la sesion y no se conservan: se pueden rehacer leyendo el PE (seccion -> offset).

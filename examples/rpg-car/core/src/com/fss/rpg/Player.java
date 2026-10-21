@@ -50,8 +50,8 @@ public class Player {
     private float camera_follow_weight = 0.0f;
     float distance = 14f;
 
-    // velocidad maxima de giro del personaje hacia la direccion deseada (grados/s) [NV: la de SA no esta verificada]
-    private static final float TURN_SPEED = 480f;
+    // velocidad maxima de giro del personaje (grados/s): 9 grados por frame de 1/50 s, STAT_PLAYER de pedstats.dat [V]
+    private static final float TURN_SPEED = 9.0f * 50.0f;
 
     // entrada de stick (0..1) con la que se camina solo hacia la puerta del coche: queda en estado "caminar"
     private static final float APPROACH_STICK = 0.4f;
@@ -106,10 +106,17 @@ public class Player {
         aim_animation = false;
         loco.restart(animator);
     }
-    Animation anim_car_open, anim_car_getin, anim_car_getout, anim_car_sit, anim_car_closedoor;
+    Animation anim_car_open, anim_car_getin, anim_car_getout, anim_car_sit, anim_car_closedoor, anim_car_close;
     // cerrando la puerta desde dentro tras subir (CTaskSimpleCarCloseDoorFromInside en GTA SA)
     private boolean closing_door = false;
     boolean exiting = false;
+    // etapa de bajar: 0 CAR_getout, 1 cerrar la puerta desde fuera (CAR_close)
+    private int exit_stage = 0;
+    // ventanas de la puerta (segundos del clip) de data/handling.cfg, grupo de animacion 0 [V]
+    private static final float OPEN_OUT_START = 0.41f, OPEN_OUT_STOP = 0.8f;
+    private static final float CLOSE_IN_START = 0.30f, CLOSE_IN_STOP = 0.45f;
+    private static final float OPEN_IN_START = 0.06f, OPEN_IN_STOP = 0.43f;
+    private static final float CLOSE_OUT_START = 0.20f, CLOSE_OUT_STOP = 0.43f;
     // caminar hasta la puerta antes de abrirla
     private boolean approaching = false;
     private float approach_time = 0.0f;
@@ -171,6 +178,7 @@ public class Player {
         anim_car_getout = ifp.getAnimation("CAR_getout_LHS", false);
         anim_car_sit = ifp.getAnimation("CAR_sit", true);
         anim_car_closedoor = ifp.getAnimation("CAR_closedoor_LHS", false);
+        anim_car_close = ifp.getAnimation("CAR_close_LHS", false);
 
         loco.restart(animator);
     }
@@ -250,7 +258,7 @@ public class Player {
             return;
         }
         if(exiting) {
-            updateExiting();
+            updateExiting(joystick_active || keys[Key.W_KEY] || keys[Key.A_KEY] || keys[Key.S_KEY] || keys[Key.D_KEY]);
             return;
         }
 
@@ -425,8 +433,9 @@ public class Player {
     // coloca al personaje junto a la puerta y reproduce bajar del auto; al terminar recupera el control
     public void startExitVehicle(Vector3f door_position, Vector3f facing) {
         exiting = true;
+        exit_stage = 0;
         closing_door = false;
-        door_target = 1.0f;
+        door_target = 0.0f;
 
         loco.reset();
 
@@ -449,24 +458,35 @@ public class Player {
         return Math.max(0.0f, Math.min(1.0f, (x - a) / (b - a)));
     }
 
-    private void updateExiting() {
-        // la puerta se abre al empezar a bajar y se cierra al final, siguiendo la fase de la animacion
-        float phase = animationPhase();
-        door_target = ramp(phase, 0.0f, 0.3f) * (1.0f - ramp(phase, 0.65f, 0.95f));
-        if(!animator.finished()) {
+    private void updateExiting(boolean has_input) {
+        float t = animator.control.time;
+        if(exit_stage == 0) {
+            // CAR_getout: la puerta se abre desde dentro en la ventana OpenIn de handling.cfg
+            door_target = ramp(t, OPEN_IN_START, OPEN_IN_STOP);
+            if(!animator.finished()) {
+                return;
+            }
+            // como GTA SA (CTaskSimpleCarCloseDoorFromOutside): al bajar cierra la puerta desde fuera
+            exit_stage = 1;
+            animator.doAnimation(anim_car_close, false);
+            animator.control.setLoop(false);
+            animator.control.speed = 1.0f;
+            animator.control.play();
+            return;
+        }
+        door_target = 1.0f - ramp(t, CLOSE_OUT_START, CLOSE_OUT_STOP);
+        // el jugador puede cortar el cierre moviendose: la puerta se cierra sola
+        if(!animator.finished() && !has_input) {
             return;
         }
         door_target = 0.0f;
         exiting = false;
-        animator.doAnimation(anim_idle, false);
-        animator.control.setLoop(true);
-        animator.control.speed = 1.0f;
-        animator.control.play();
+        loco.reset();
+        loco.restart(animator);
     }
-
     private void updateEntering() {
-        // la puerta empieza a abrirse cuando la mano llega a la manija y queda abierta mientras sube
-        door_target = enter_stage == 0 ? ramp(animationPhase(), 0.3f, 0.7f) : 1.0f;
+        // la puerta se abre en la ventana OpenOut de handling.cfg (la mano llega a la manija) y queda abierta mientras sube
+        door_target = enter_stage == 0 ? ramp(animator.control.time, OPEN_OUT_START, OPEN_OUT_STOP) : 1.0f;
         if(!animator.finished()) {
             return;
         }
@@ -495,7 +515,7 @@ public class Player {
         if(!closing_door) {
             return;
         }
-        door_target = 1.0f - ramp(animationPhase(), 0.35f, 0.75f);
+        door_target = 1.0f - ramp(animator.control.time, CLOSE_IN_START, CLOSE_IN_STOP);
         if(!animator.finished()) {
             return;
         }

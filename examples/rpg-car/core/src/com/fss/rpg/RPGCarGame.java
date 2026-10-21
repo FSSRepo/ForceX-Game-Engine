@@ -495,7 +495,8 @@ public class RPGCarGame extends Game implements InputListener {
     // puerta del auto que se esta abriendo/cerrando al subir o bajar, suavizada hacia player.door_target
     private Car door_car;
     private float door_open = 0.0f;
-    private static final float DOOR_OPEN_ANGLE = -70f;
+    // puertas delanteras: 1.2566 rad = 72 grados [V] (CDoor::Open)
+    private static final float DOOR_OPEN_ANGLE = -72f;
     // alta para que la puerta siga de cerca el objetivo que marca la fase de la animacion
     private static final float DOOR_SPEED = 8f;
 
@@ -712,7 +713,7 @@ public class RPGCarGame extends Game implements InputListener {
                     door_car = car;
                 }
             }
-            door_open = 1.0f;
+            door_open = 0.0f;
             Vector3f facing = new Vector3f();
             Vector3f door = vehicle.getDriverDoorPosition(vehicle_nodes, vehicle.getChassisHeight(), facing);
             vehicle.onVehicle = false;

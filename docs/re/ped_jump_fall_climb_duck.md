@@ -6,11 +6,11 @@ Unidades: velocidades del ped en **m por frame de 20 ms** (dt=1.0 = 1/50 s). Par
 `dt = DAT_00b7cb5c`; `now_ms = DAT_00b7cb84` (CTimer::m_snTimeInMilliseconds).
 
 ## Objetivos (estado)
-1. SALTO - HECHO en lo esencial (secuencia, anims, impulso, condiciones). Pendiente: duracion real de anims (ped.ifp), stat-modifier exacto.
-2. CAIDA/ATERRIZAJE - PARCIAL (umbrales y tipos de landing hechos; formula de dano de colision fisica NO; dano "FALL_fall" documentado).
-3. TREPAR/VAULT - PARCIAL (sondas de escaneo, rechazos por altura, tipo climb 1/2; Climb::ProcessPed 0x680dc0 sin leer).
-4. AGACHARSE - PENDIENTE.
-5. HEADING / WALK_start / Run_stop - PENDIENTE.
+1. SALTO - HECHO (secuencia, anims, impulso, gravedad, condiciones de disparo, duraciones). Pendiente menor: formula exacta del modificador de stats (aprox. 1.0 con stats por defecto).
+2. CAIDA/ATERRIZAJE - HECHO a nivel de tareas y umbrales (vz<=-0.1 FALL_fall, minVz<=-0.4 derribo, tipos de Land). NO resuelto: formula final de dano real (CPedDamageResponseCalculator / dano por colision fisica).
+3. TREPAR/VAULT - PARCIAL: sondas de escaneo (22 esferas), rechazos por altura, tipo 1/2 (umbral 1.4 m), secuencia de anims y root motion. Falta: offsets exactos por fase (dos floats runtime en bss 0xC18F78/0xC18F7C) y condiciones de abort.
+4. AGACHARSE - HECHO (activacion, CanPedDuck, anims, control, salida).
+5. HEADING - HECHO (9 deg/frame jugador, igual en walk/run/sprint). WALK_start/Run_stop: duraciones y root motion de ped.ifp obtenidas; logica que las dispara (SetMoveAnim 0x5E4A00) NO leida.
 
 ## 0. Tabla de IDs de animacion (AnimationId) [V]
 La tabla de nombres esta en el exe en `0x8d1160` (punteros a strings, stride 4). El primer nombre `Walk_civi` esta en idx 2 de un array que empieza en
@@ -184,14 +184,93 @@ Entrada: ultima `InAir` (anim, `minVz`), ped. Se limpia el anim de InAir (blendD
 Campos de ctor: +0x8,+0x9,+0xA,+0xC flags=0, +0xB, +0xD=climbType, +0xE=0, +0xF, +0x10=0xFF (fase), +0x14 heading, +0x18 vec3 pos, +0x24 entidad, +0x28 short, +0x2C anim.
 **PENDIENTE leer ProcessPed y tabla de offsets (0x8d2f1c..0x8d2f30: -0.4, -1.1, -0.4, 0.15, 1.0, 0.5 son offsets segun fase de climb y 0x8d2f38..58: 0.8, 0.6, 0.3, 0.5, 1.309, 0.02, -0.05, 0.9, 0.785).**
 
-## 4. AGACHARSE - PENDIENTE
-Direcciones: CTaskSimpleDuck::ProcessPed 0x694390, ctor 0x691FC0, CanPedDuck 0x692610, ControlDuckMove 0x6923F0, CTaskSimpleDuckToggle::ProcessPed 0x62F6E0,
-PlayerControlDucked 0x687F30.
+## 4. AGACHARSE [V salvo indicado]
 
-## 5. HEADING / WALK_start / Run_stop - PENDIENTE
-Direcciones: CTaskSimplePlayerOnFoot::PlayerControlZelda 0x6883D0 (real 0x6883D7), ProcessPed 0x688810, CPed::RestoreHeadingRate 0x5DFD60.
+### Activacion (CTaskSimpleDuckToggle 0x62F690/0x62F6E0, tipo 0x51A; arg +0x8 = 1 / -1 / 0)
+- `ProcessPed` (0x62F6E0): arg==0 (o -1 con duck ya existente) -> aborta la `CTaskSimpleDuck` secundaria (`GetTaskDuck(0)`->virtual +0x18). arg==1 o -1: si no hay duck secundario, crea
+  `CTaskSimpleDuck(type=4, length=0, shotsWhizzing=-1)` (ctor 0x691FC0; size 0x28) y la coloca en el slot secundario 1 (`0x681B60`); en caso de que ya haya un duck lo conmuta con `0x692340/0x6924F0(type 4)`. Al abrir, llama `CTaskSimpleUseGun::ClearAnim (0x61E190)` si hay arma. Siempre devuelve true (la tarea toggle termina al instante).
+- `CTaskSimpleDuck::CanPedDuck` (0x692610): **false si el ped es jugador y `moveState >= 6`** (RUN/SPRINT: `ped+0x534`); si no, true si el arma activa (`ped+0x5A0 + slot*0x1C`) tiene weaponInfo con grupo 0 o 5 (`*ecx==0 || ==5`), es el arma 0x29 (spray 41), o weaponInfo.flags bit 13 (0x2000, "crouch ok"). Si no hay weaponInfo => true.
+- Jugador: `PlayerControlDucked` (0x687F30) se llama en vez de Zelda mientras haya duck (slot secundario 1 distinto de NULL). Boton de agacharse = `CPad::DuckJustDown` (0x540720 area; el toggle lo emite 0x540720/0x540670, [NV exacto]).
+- Salto desde agachado: PlayerControlZelda comprueba `pad.Duck (0x540670)==false` => **no se puede saltar mientras se mantiene agachar** (0x68870F).
+
+### CTaskSimpleDuck (vtable ~0x86xxxx, size 0x28) campos [V]
++0x08 inicio ms, +0x0C length ms (0 = indefinido), +0x0E contador restante, +0x10 anim assoc, +0x18 `abortRequested`, +0x19 `finished/aborting`, +0x1A, +0x1B `active`,
++0x1C `moveMode` (1.0 / -1.0 / otro), +0x20 acumulador, +0x24 `type` (4 = jugador con arma / duck normal; 2 = coger cobertura/shots-whizzing; 0 = cower), +0x25 contador de gracia (init 0xFF).
+- `ProcessPed` 0x694390: mientras el ped esta vivo (`ped+0x540 > 1.0` => health/flag), `type!=0`: anim **WEAPON_crouch (ID 55, 0x37)**; `type==0`: **DUCK_cower (ID 141, 0x8D)**; blend delta 4.0; la anim opuesta se quita (blend -4.0 o -2.0 para el id 0xA).
+  Si `length>0` y `now > start+length` -> aborta. Si `length`/contador `+0xE>0` decrementa `dt*20` ms. Cuando la anim ya existe y `anim.blend > 0.99` (0x862CD0) y type 2/4 se llama `0x6939F0` (transicion; tipos de duck con arma).
+  Si `finished(+0x19)`: devuelve true y limpia el flag ped `0x46c &= ~0x04000000` (bit 26, "agachado").
+- Callback de fin de anim 0x692550: pone `finished` segun el ID (tabla de IDs 0x25.. de anims de agachado).
+- `ControlDuckMove(x,y)` 0x6923F0: mueve el estado de rodar/avanzar: `+0x1C` pasa a +1.0/-1.0 (adelante/atras en crouch o roll), mientras que `+0x20` interpola hacia `y` a **0.07*dt por frame** (0x858CA8); cuando `|y| < 0.1` y `|x| > 0.9` resetea y fija `moveMode = sign(x)` (activa **Crouch_Roll_R/L** IDs 59/57 mediante UseGun/PlayerControlDucked).
+- `PlayerControlDucked` (0x687F30): lee el stick (`/128` = 0x858B88), magnitud m. Si hay apuntado/arma: gira el ped hacia el stick relativo a la camara (`desiredRot = atan2(...) - camHeading`) solo si la camara puede ("0x441E10" test de colision/espacio) y llama `ControlDuckMove`.
+  Salir de agachado con stick: si `m > 0.5` (0x858B8C): sin boton sprint -> `BlendAnimation(grupo ped +0x4D4, ID 0 walk)`, `moveState=4 (WALK)`, `ped.moveBlend(+0x480->0x14)=1.5`; con sprint pad (0x5407A0) -> anim ID 1 (run), `moveState=6 (RUN)`, blend 1.5; blend delta 4.0 (`0x8D2FF0`). Si hay arma sin apuntar usa anim ID 0x32 (GunMove_FWD) y `UseGun::ControlGunMove`.
+- Velocidad en cuclillas: no hay velocidad programada; el desplazamiento viene del root motion de las anims `GunCrouchFwd/Bwd` y `Crouch_Roll_*` (IDs 56..59) [NV].
+
+## 5. HEADING / GIRO / STICK [V]
+
+### 6. Duraciones y root motion de las animaciones (ped.ifp, ANP3) [V]
+Parseado con script propio: cabecera nodo = 24 (nombre) + 3 dwords (tipo, nFrames, boneId); frame tipo 3 = 10 bytes (quat int16*4 + tiempo u16), tipo 4 = 16 bytes (+ trans int16*3 /1024). **Tiempo = u16 / 60 s.**
+Nota: el motor reproduce a `speed` (JUMP_launch: speed = modificador de stats ~1.0).
+
+| Anim | Duracion (s) | Root motion (m) primer->ultimo frame del nodo raiz |
+|---|---|---|
+| JUMP_launch / _R | 0.200 | y: 0 -> +1.036 (pero la fisica manda; el impulso real se aplica al terminar) |
+| JUMP_glide | 0.500 (loop) | - |
+| JUMP_land | 0.233 | y +0.92 |
+| FALL_fall | 0.733 | - |
+| FALL_glide | 0.800 | - |
+| FALL_land | 0.467 | y +0.355 |
+| FALL_collapse | 1.000 | y +2.475 |
+| FALL_back / FALL_front | 0.733 / 0.733 | - |
+| KO_skid_back | 0.967 | - |
+| Getup / Getup_front | 1.367 | z -0.906 -> 0.023 |
+| CLIMB_jump | 0.567 | y +0.197 |
+| CLIMB_idle | 0.800 (loop, cuelgue) | - |
+| CLIMB_Pull | 0.867 | **z +1.075** (y 0.199 -> 0.224) |
+| CLIMB_Stand | 0.800 | **z +0.943**, y 0.199 -> 0.522 |
+| CLIMB_Stand_finish | 0.200 | y +0.168 |
+| CLIMB_jump_B | 0.967 | y 0.224 -> 1.114 (vault/paso sobre borde bajo) |
+| CLIMB_jump2fall | 0.033 | - |
+| EV_step | 1.067 | - |
+| WEAPON_crouch | 0.800 | - |
+| GunCrouchFwd | 0.733 | y +2.74 (=3.74 m/s) |
+| GunCrouchBwd | 1.000 | y -1.865 (=1.87 m/s) |
+| Crouch_Roll_L / _R | 0.933 | x -2.805 / +2.774 |
+| DUCK_cower | 0.800 | - |
+| WALK_start | 0.267 | y +0.472 |
+| Run_stop | 0.867 | y +1.979 |
+| Run_stopR | 0.800 | y +1.979 |
+| walk_civi | 1.133 (ciclo) | y +1.725 -> 1.52 m/s |
+| run_civi | 0.733 (ciclo) | y +3.156 -> 4.30 m/s |
+| sprint_panic | 0.600 (ciclo) | y +3.542 -> 5.90 m/s |
+| idle_stance | 1.500 (ciclo) | - |
+(El grupo `man` de animgrp.dat usa `walk_civi, run_civi, sprint_panic, idle_stance, roadcross, walk_start`; CJ puede usar otros grupos con distintas velocidades.)
+
+## 7. Secuencia de TREPAR (CTaskSimpleClimb, ProcessPed 0x680DC0) [V parcial]
+- Campos: +0xD fase (0..6), +0xE sub-fase de posicionado (1..6), +0x2C anim assoc, +0x28 contador ms, +0xB auto-avance (npc), +0xC "forzar suelta".
+- Tabla de offsets del objetivo segun sub-fase (relativos al punto de agarre; `x = -sin(h)*d`, `y = cos(h)*d`, h = heading de pared): fases 1,2 -> d=-0.4, dz=-1.1 (colgado 1.1 m bajo el borde, 0.4 m separado de la pared); fase 3 y 5 -> d=-0.4, dz=[0xC18F78] (variable runtime, no inicializada en el exe; [NV] 0); fase 4 -> d=0.15, dz=1.0 (subida sobre el borde); fase 6 -> d=0.5, dz=[0xC18F7C] [NV]. (Consts 0x8D2F1C..0x8D2F30)
+- Movimiento hacia el objetivo: el ped no usa fisica; cada frame `vel = (target - pos)*0.25`-ish (const 0x858C84=0.25) mientras la distancia^2 > 0.1; si menor se pega al objetivo; `dt`-escalado con `ApplyMoveForce`.
+- Fases por animacion activa (tabla de salto 0x681684 para IDs 0x80..0x85):
+  1. CLIMB_jump (0x80, 0.567 s): al terminar avanza; para jugador sigue si se mantiene el boton (0x540750) o auto.
+  2. CLIMB_idle (0x81, cuelgue): espera `JumpJustDown` (0x540770) o auto ([0xB]) -> pull; sin pulsar durante >0.5/1.0 s (`[0x28] > 1000 ms` o `>500` con idle) -> se suelta (`0x67DBE0` -> cae, y aplica `ApplyMoveForce(front * mass * -0.1)` = pequeno empujon atras, 0x681360).
+  3. CLIMB_Pull (0x82, 0.867 s, z +1.075) -> CLIMB_Stand (0x83, 0.8 s, z +0.943) -> CLIMB_Stand_finish (0x84, 0.2 s) -> fin; al terminar limpia flags ped 0x200|0x100 y devuelve true.
+  4. CLIMB_jump_B (0x85, 0.967 s) variante baja (vault; tipo 2 <= 1.4 m).
+- Altura total subida cuando el agarre esta a H sobre el origen del ped: el ped queda a 1.1 m bajo el borde en el cuelgue; Pull+Stand = +2.02 m de root motion.
+- Cancelacion: boton de soltar (`pad 0x5400D0`) -> `MakeAbortable`.
+
+## 8. Resumen numerico rapido (para replicar) [V salvo indicado]
+- dt = 1/50 s; gravedad ped: `vz -= 0.008*dt` por frame (en SI: 0.008*50*50 = 20 m/s^2); masa ped 70 (CPed ctor 0x5E82A4).
+- Salto del jugador: espera 0.2 s (JUMP_launch), luego `vz = 8.5/70 = 0.1214 m/frame (6.07 m/s)`, `H = 0.10 / 0.10..0.17 / 0.17..0.22 m/frame` (5 / 5..8.5 / 8.5..11 m/s) segun walk/run/sprint x modificador de stats (~1). Apex = 0.92 m; duracion de aire a nivel = 2*0.1214/0.008 = 30 frames = 0.6 s; alcance sprint ~ 0.22*30 = 6.6 m (+ velocidad previa), run ~ 5.1 m (0.17), parado 3.0 m (0.10)... [NV alcance].
+- Caida: FALL_fall con vz <= -0.1 (5 m/s); derribo con vz <= -0.4 (20 m/s) (equivale a caer desde 10 m: 0.4^2/(2*0.008) = 10 m); grito a vz*50 < -20 y >=500 ms en el aire.
+- Altura de caida para vz=-0.1: 0.625 m bajo el apex.
+- Giro: 9 deg/frame (450 deg/s).
+- Agacharse: no si sprint/run (moveState>=6) siendo jugador.
 
 ## Estado
-- Resuelto: ids de anim, secuencia de salto, formula del impulso (excepto masa/stat), umbrales de fall (-0.1 FALL_fall, -0.4 grito/derribo), landing types, sondas de escaneo y rechazos de altura.
-- Sin resolver: Climb::ProcessPed (0x680dc0), duck, heading, duraciones de ped.ifp, dano real de caida.
-- Siguientes pasos: `powershell -NoProfile -File tools\re\dis.ps1 -Va 0x680dc0 -Len 0x900` (Climb::ProcessPed); `-Va 0x694390 -Len 0x300`, `-Va 0x6923f0 -Len 0x230`, `-Va 0x62f6e0 -Len 0x200`; `-Va 0x6883d0 -Len 0x440`.
+Resuelto: ids de anim; flujo de salto/aterrizaje/caida; impulso, gravedad, masa; umbrales de caida; sondas y rechazos de climb; duck; heading; duraciones y root motion de anims.
+No resuelto / dudas:
+- Dano real de caida: los valores 60/75 y 55/70 de `ComplexInAirAndLand::CreateNextSubTask` (0x67CE7C..0x67D199) pasan a `CPedDamageResponseCalculator`; falta leer 0x5E05B0 y 0x5A7950 para saber si son dano directo o intensidad. Comprobar si el dano aplica en saltos normales (FALL_fall arranca a vz<=-0.1, que un salto normal alcanza al caer).
+- Climb: offsets runtime 0xC18F78/0xC18F7C y la maquina de estados completa de `0x680DC0` (0x6811CC.. 0x681617); funciones 0x67B5C0, 0x67E7B0, 0x67EF20, 0x67DBE0, 0x680570.
+- SetMoveAnim (0x5E4A00): disparo de WALK_start/Run_stop; ControlButtonSprint (0x60A610) umbrales de sprint/energia.
+- Formula exacta del modificador de stats `GetFatAndMuscleModifier(2)` (0x559BB3..): `~1 - 0.2*f(fat) - 0.1*(muscle-50)/950`, minimo 0.8 [NV].
+Siguientes pasos (comandos): `powershell -NoProfile -File tools
+e\dis.ps1 -Va 0x5e05b0 -Len 0x200`; `-Va 0x5a7950 -Len 0x40`; `-Va 0x5e4a00 -Len 0x600`; `-Va 0x680dc0 -Len 0x900`; `-Va 0x60a610 -Len 0x3b0`.

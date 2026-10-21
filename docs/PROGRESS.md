@@ -61,6 +61,21 @@ Ghidra no define muchas funciones). Herramientas:
 - MCP `rea`: `procedure_pseudo_code` con `"0x..."` (solo para funciones definidas en Ghidra; salida enorme).
   Permiso ya concedido: regla `mcp__rea` en `/permissions`.
 
+## Resultados de la Fase 0 ya fusionados
+
+- **Salto / caída / trepar / agacharse / heading**: terminado (`docs/re/ped_jump_fall_climb_duck.md`) y fusionado en
+  `MECHANICS_GTASA.md` secciones 1–2. Heading 9°/frame verificado con `pedstats.dat`; aplicado en `Player.TURN_SPEED`.
+  Cuidado: ese informe cita velocidades 1.52 / 4.30 / 5.90 m/s: son del grupo `man` (`walk_civi`...). CJ usa el grupo
+  `player` (`walk_player`, `run_player`, `SPRINT_civi`...; tabla del exe en 0x85d8c0): **1.556 / 5.706 / 9.562 m/s**.
+- **Subir/bajar del coche**: terminado (`docs/re/car_enter_exit.md`), fusionado en la sección 3. Ventanas de la puerta de
+  `handling.cfg` aplicadas en `Player` (OpenOut 0.41–0.8, CloseIn 0.30–0.45, OpenIn 0.06–0.43, CloseOut 0.20–0.43 s),
+  puerta a 72°, y cierre desde fuera al bajar (`CAR_close_LHS`, cortable moviéndose).
+- Cámara (`camera_pending.md`): **en curso** al escribir esto.
+
+Sin resolver de la Fase 0 (ver la sección `## Estado` de cada informe): daño de caída; offsets runtime de trepar
+(0xC18F78/C); lógica de `SetMoveAnim` 0x5E4A00 que dispara `WALK_start`/`Run_stop`; valores numéricos de `seatPos`;
+radio/tolerancia de llegada a la puerta (`ControlSubTask` 0x64a820); árbol de `EnterCar::CreateNextSubTask`.
+
 ## Agentes de la Fase 0 (lanzados en esta sesión)
 
 Escriben (incrementalmente, y con sección `## Estado` al final) en:
