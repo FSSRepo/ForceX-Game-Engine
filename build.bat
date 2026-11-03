@@ -9,7 +9,8 @@ set "clean=FALSE"
 set "reconfig=FALSE"
 set "help=FALSE"
 set "rmlui=FALSE"
-set "ninjapath=%~dp0ninja.exe"
+set "ninjapath="
+set "cmakepath=cmake"
 set "platform="
 set "oal="
 set "src="
@@ -88,15 +89,15 @@ if "%help%"=="TRUE" goto :SHOW_HELP
 rem ============================================
 rem Validate dependencies
 rem ============================================
-where cmake >nul 2>&1
-if %ERRORLEVEL% neq 0 (
-    echo Error: cmake not found in PATH.
-    exit /b 1
-)
-
-if not exist "%ninjapath%" (
-    echo Error: Ninja not found at "%ninjapath%".
-    exit /b 1
+if "%android%"=="TRUE" (
+    call :RESOLVE_ANDROID_TOOLS
+    if !ERRORLEVEL! neq 0 exit /b 1
+) else (
+    where cmake >nul 2>&1
+    if !ERRORLEVEL! neq 0 (
+        echo Error: cmake not found in PATH.
+        exit /b 1
+    )
 )
 
 where jar >nul 2>&1
@@ -154,6 +155,30 @@ echo Examples:
 echo   build.bat --android --ndk-path C:\Android\ndk --platform android-34
 echo   build.bat --clean --reconfig
 echo   build.bat
+exit /b 0
+
+:RESOLVE_ANDROID_TOOLS
+set "sdkroot=%ANDROID_SDK_ROOT%"
+if "%sdkroot%"=="" set "sdkroot=%ANDROID_HOME%"
+if "%sdkroot%"=="" set "sdkroot=%LOCALAPPDATA%\Android\Sdk"
+if not exist "%sdkroot%\cmake" (
+    echo Error: Android SDK CMake not found under "%sdkroot%\cmake".
+    echo Install CMake from Android SDK Manager or set ANDROID_SDK_ROOT.
+    exit /b 1
+)
+
+set "cmakebin="
+for /d %%D in ("%sdkroot%\cmake\*") do (
+    if exist "%%~fD\bin\cmake.exe" if exist "%%~fD\bin\ninja.exe" set "cmakebin=%%~fD\bin"
+)
+if "%cmakebin%"=="" (
+    echo Error: Android SDK CMake with its bundled ninja.exe was not found.
+    exit /b 1
+)
+set "cmakepath=%cmakebin%\cmake.exe"
+set "ninjapath=%cmakebin%\ninja.exe"
+echo Android CMake: "%cmakepath%"
+echo Android Ninja: "%ninjapath%"
 exit /b 0
 
 rem ============================================
@@ -235,27 +260,27 @@ set "abi=%~1"
 set "ndk_args=-DCMAKE_TOOLCHAIN_FILE=%ndkpath%/build/cmake/android.toolchain.cmake -DANDROID_NDK=%ndkpath% -DANDROID_ABI=%abi% -DANDROID_PLATFORM=%platform% -DCMAKE_MAKE_PROGRAM=%ninjapath% -GNinja"
 
 echo -- FreeType / %abi% --
-cmake -S "%dep_base%\freetype\src\freetype-2.13.2" -B "%dep_base%\freetype\build\android\%abi%" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DFT_DISABLE_ZLIB=TRUE -DFT_DISABLE_BZIP2=TRUE -DFT_DISABLE_PNG=TRUE -DFT_DISABLE_HARFBUZZ=TRUE -DFT_DISABLE_BROTLI=TRUE -DCMAKE_POLICY_VERSION_MINIMUM=3.5 %ndk_args%
+"%cmakepath%" -S "%dep_base%\freetype\src\freetype-2.13.2" -B "%dep_base%\freetype\build\android\%abi%" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DFT_DISABLE_ZLIB=TRUE -DFT_DISABLE_BZIP2=TRUE -DFT_DISABLE_PNG=TRUE -DFT_DISABLE_HARFBUZZ=TRUE -DFT_DISABLE_BROTLI=TRUE -DCMAKE_POLICY_VERSION_MINIMUM=3.5 %ndk_args%
 if !ERRORLEVEL! neq 0 ( endlocal & exit /b 1 )
-cmake --build "%dep_base%\freetype\build\android\%abi%" --config Release --parallel
+"%cmakepath%" --build "%dep_base%\freetype\build\android\%abi%" --config Release --parallel
 if !ERRORLEVEL! neq 0 ( endlocal & exit /b 1 )
-cmake --install "%dep_base%\freetype\build\android\%abi%" --config Release --prefix "%dep_base%\freetype\out\android\%abi%"
+"%cmakepath%" --install "%dep_base%\freetype\build\android\%abi%" --config Release --prefix "%dep_base%\freetype\out\android\%abi%"
 if !ERRORLEVEL! neq 0 ( endlocal & exit /b 1 )
 
 echo -- lunasvg / %abi% --
-cmake -S "%dep_base%\lunasvg\src\lunasvg-3.5.0" -B "%dep_base%\lunasvg\build\android\%abi%" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DUSE_SYSTEM_PLUTOVG=OFF -DLUNASVG_BUILD_EXAMPLES=OFF -DPLUTOVG_BUILD_EXAMPLES=OFF -DLUNASVG_DISABLE_LOAD_SYSTEM_FONTS=ON %ndk_args%
+"%cmakepath%" -S "%dep_base%\lunasvg\src\lunasvg-3.5.0" -B "%dep_base%\lunasvg\build\android\%abi%" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DUSE_SYSTEM_PLUTOVG=OFF -DLUNASVG_BUILD_EXAMPLES=OFF -DPLUTOVG_BUILD_EXAMPLES=OFF -DLUNASVG_DISABLE_LOAD_SYSTEM_FONTS=ON %ndk_args%
 if !ERRORLEVEL! neq 0 ( endlocal & exit /b 1 )
-cmake --build "%dep_base%\lunasvg\build\android\%abi%" --config Release --parallel
+"%cmakepath%" --build "%dep_base%\lunasvg\build\android\%abi%" --config Release --parallel
 if !ERRORLEVEL! neq 0 ( endlocal & exit /b 1 )
-cmake --install "%dep_base%\lunasvg\build\android\%abi%" --config Release --prefix "%dep_base%\lunasvg\out\android\%abi%"
+"%cmakepath%" --install "%dep_base%\lunasvg\build\android\%abi%" --config Release --prefix "%dep_base%\lunasvg\out\android\%abi%"
 if !ERRORLEVEL! neq 0 ( endlocal & exit /b 1 )
 
 echo -- rlottie / %abi% --
-cmake -S "%dep_base%\rlottie\src\rlottie-0.2" -B "%dep_base%\rlottie\build\android\%abi%" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DLIB_INSTALL_DIR=lib -DLOTTIE_TEST=OFF -DLOTTIE_MODULE=OFF -DLOTTIE_CCACHE=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 %ndk_args%
+"%cmakepath%" -S "%dep_base%\rlottie\src\rlottie-0.2" -B "%dep_base%\rlottie\build\android\%abi%" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DLIB_INSTALL_DIR=lib -DLOTTIE_TEST=OFF -DLOTTIE_MODULE=OFF -DLOTTIE_CCACHE=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 %ndk_args%
 if !ERRORLEVEL! neq 0 ( endlocal & exit /b 1 )
-cmake --build "%dep_base%\rlottie\build\android\%abi%" --config Release --parallel
+"%cmakepath%" --build "%dep_base%\rlottie\build\android\%abi%" --config Release --parallel
 if !ERRORLEVEL! neq 0 ( endlocal & exit /b 1 )
-cmake --install "%dep_base%\rlottie\build\android\%abi%" --config Release --prefix "%dep_base%\rlottie\out\android\%abi%"
+"%cmakepath%" --install "%dep_base%\rlottie\build\android\%abi%" --config Release --prefix "%dep_base%\rlottie\out\android\%abi%"
 if !ERRORLEVEL! neq 0 ( endlocal & exit /b 1 )
 
 endlocal & exit /b 0
@@ -314,14 +339,14 @@ for %%a in (%abis%) do (
     )
 
     if not exist "!build_dir!\build.ninja" (
-        cmake -S . -B "!build_dir!" -DCMAKE_BUILD_TYPE=Release -DFX_OAL=%oal% -DFX_RMLUI=%rmlui% -DCMAKE_TOOLCHAIN_FILE="%ndkpath%/build/cmake/android.toolchain.cmake" -DANDROID_ABI=%%a -DANDROID_NDK="%ndkpath%" -DANDROID_PLATFORM=%platform% -DCMAKE_MAKE_PROGRAM="%ninjapath%" -GNinja
+"%cmakepath%" -S . -B "!build_dir!" -DCMAKE_BUILD_TYPE=Release -DFX_OAL=%oal% -DFX_RMLUI=%rmlui% -DCMAKE_TOOLCHAIN_FILE="%ndkpath%/build/cmake/android.toolchain.cmake" -DANDROID_ABI=%%a -DANDROID_NDK="%ndkpath%" -DANDROID_PLATFORM=%platform% -DCMAKE_MAKE_PROGRAM="%ninjapath%" -GNinja
         if !ERRORLEVEL! neq 0 (
             echo Error: CMake configuration failed for %%a.
             exit /b 1
         )
     )
 
-    cmake --build "!build_dir!" --config Release
+    "%cmakepath%" --build "!build_dir!" --config Release
     if !ERRORLEVEL! neq 0 (
         echo Error: Build failed for %%a.
         exit /b 1

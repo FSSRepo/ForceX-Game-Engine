@@ -1,12 +1,16 @@
 #!/bin/bash
+set -e
 
 android=FALSE
-ninjapath="$(dirname "$0")/ninja"
+ninjapath="${NINJA_PATH:-}"
+cmakepath="${CMAKE_PATH:-}"
 reconfig=FALSE
 rmlui=FALSE
 src=""
+has_args=FALSE
 
 while [[ "$1" != "" ]]; do
+    has_args=TRUE
     case $1 in
         --ndk-path ) shift
                     ndkpath=$1
@@ -28,7 +32,7 @@ while [[ "$1" != "" ]]; do
 done
 
 # Interactive mode when no CLI arguments are provided
-if [[ $# -eq 0 ]]; then
+if [[ "$has_args" == "FALSE" ]]; then
     echo "=== ForceX Engine - Interactive build ==="
     echo "  1) Linux (default)"
     echo "  2) Android"
@@ -54,6 +58,56 @@ if [[ $# -eq 0 ]]; then
     fi
     echo "=========================================="
 fi
+
+# Prefer the Ninja binary bundled with the Android SDK's CMake package. For
+# desktop builds, or SDKs without CMake installed, use an explicit NINJA_PATH
+# or Ninja from PATH. This also avoids trying to execute the Windows-only
+# ninja.exe that may be present in a source checkout.
+resolve_ninja() {
+    if [[ -n "$ninjapath" ]]; then
+        if [[ ! -x "$ninjapath" ]]; then
+            echo "Error: NINJA_PATH is not executable: $ninjapath"
+            exit 1
+        fi
+    fi
+
+    local sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+    local candidate
+    if [[ -z "$ninjapath" && "$android" == "TRUE" && -n "$sdk_root" && -d "$sdk_root/cmake" ]]; then
+        for candidate in "$sdk_root"/cmake/*/bin/ninja; do
+            if [[ -x "$candidate" ]]; then
+                ninjapath="$candidate"
+                if [[ -z "$cmakepath" && -x "${candidate%/ninja}/cmake" ]]; then
+                    cmakepath="${candidate%/ninja}/cmake"
+                fi
+            fi
+        done
+    fi
+
+    if [[ -z "$ninjapath" ]] && command -v ninja >/dev/null 2>&1; then
+        ninjapath="$(command -v ninja)"
+    elif [[ -z "$ninjapath" && -x "$(dirname "$0")/ninja" ]]; then
+        ninjapath="$(dirname "$0")/ninja"
+    elif [[ -z "$ninjapath" ]]; then
+        echo "Error: Ninja not found. Install Android SDK CMake or Ninja, or set NINJA_PATH."
+        exit 1
+    fi
+
+    if [[ -n "$cmakepath" && ! -x "$cmakepath" ]]; then
+        echo "Error: CMAKE_PATH is not executable: $cmakepath"
+        exit 1
+    elif [[ -z "$cmakepath" ]]; then
+        cmakepath="$(command -v cmake)"
+    fi
+    if [[ -z "$cmakepath" || ! -x "$cmakepath" ]]; then
+        echo "Error: CMake not found. Install CMake or set CMAKE_PATH."
+        exit 1
+    fi
+}
+
+resolve_ninja
+echo "CMake: $cmakepath"
+echo "Ninja: $ninjapath"
 
 mkdir -p build-natives
 mkdir -p dist
@@ -92,20 +146,20 @@ if [[ "$android" == "TRUE" ]]; then
 
         if [[ ! -f "build-natives/build-$abi/build.ninja" ]] || [[ "$reconfig" == "TRUE" ]]; then
             rm -rf "build-natives/build-$abi"
-            cmake -S . -B "build-natives/build-$abi" -DCMAKE_BUILD_TYPE=Release -DFX_OAL="$oal" -DFX_RMLUI="$rmlui" \
+            "$cmakepath" -S . -B "build-natives/build-$abi" -DCMAKE_BUILD_TYPE=Release -DFX_OAL="$oal" -DFX_RMLUI="$rmlui" \
                 -DCMAKE_TOOLCHAIN_FILE="$ndkpath/build/cmake/android.toolchain.cmake" \
                 -DANDROID_ABI="$abi" -DANDROID_NDK="$ndkpath" -DANDROID_PLATFORM="$platform" \
                 -DCMAKE_MAKE_PROGRAM="$ninjapath" -GNinja
         fi
 
-        cmake --build "build-natives/build-$abi" --config Release
+        "$cmakepath" --build "build-natives/build-$abi" --config Release
         find "build-natives/build-$abi/bin" -name "*.so" -exec cp -v {} "android-backend/libs/$abi/" \;
     done
 
-    ./gradlew android-backend:assembleRelease
+    bash ./gradlew android-backend:assembleRelease
 
     if [[ "$rmlui" == "TRUE" ]]; then
-        ./gradlew :extensions:rml-gui:jar || exit 1
+        bash ./gradlew :extensions:rml-gui:jar
     fi
 
     echo "Packaging Android distribution..."
@@ -132,22 +186,22 @@ else
     fi
 
     if [[ ! -f "build-natives/linux/build.ninja" ]] || [[ "$reconfig" == "TRUE" ]]; then
-        cmake -S . -B build-natives/linux \
+        "$cmakepath" -S . -B build-natives/linux \
             -DCMAKE_BUILD_TYPE=Release \
             -DFX_RMLUI="$rmlui" \
             -DCMAKE_CXX_FLAGS="-I$JAVA_HOME/include -I$JAVA_HOME/include/linux" \
             -DCMAKE_MAKE_PROGRAM="$ninjapath" -GNinja
     fi
 
-    cmake --build build-natives/linux --config Release
+    "$cmakepath" --build build-natives/linux --config Release
     find build-natives/linux -name "*.so" -exec cp -v {} dist/linux \;
 
     find desktop-backend/libs -name "*.jar" -exec cp -v {} dist/linux/libs \;
 
-    ./gradlew desktop-backend:assemble
+    bash ./gradlew desktop-backend:assemble
 
     if [[ "$rmlui" == "TRUE" ]]; then
-        ./gradlew :extensions:rml-gui:jar || exit 1
+        bash ./gradlew :extensions:rml-gui:jar
     fi
 
     if [[ ! -f "forcex/build/libs/forcex.jar" ]]; then
