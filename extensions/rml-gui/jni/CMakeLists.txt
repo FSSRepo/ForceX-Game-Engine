@@ -97,6 +97,10 @@ endif()
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib")
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "RmlUi estático dentro de fxrmlui" FORCE)
+if(UNIX AND NOT ANDROID)
+    # RmlUi is linked into fxrmlui, a shared library, on Linux desktop.
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
 set(RMLUI_SAMPLES OFF CACHE BOOL "" FORCE)
 set(RMLUI_FONT_ENGINE "freetype" CACHE STRING "" FORCE)
 set(RMLUI_LUA_BINDINGS OFF CACHE BOOL "" FORCE)

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 #include "Debug.h"
 #include "Math.h"
 #include "Vector4.h"

@@ -40,6 +40,15 @@ prepare_source() {
     fx_download "$RLOTTIE_URL" "$FX_DEP_SRC/$RLOTTIE_ARCHIVE"
     fx_extract "$FX_DEP_SRC/$RLOTTIE_ARCHIVE" "$RLOTTIE_SRC"
 
+    # rlottie 0.2 uses std::numeric_limits in vrle.cpp without including its
+    # standard header; GCC 13 no longer gets it indirectly from other headers.
+    local vrle_source="$RLOTTIE_SRC/src/vector/vrle.cpp"
+    if ! grep -q '^#include <limits>$' "$vrle_source"; then
+        local patched_source="${vrle_source}.tmp"
+        { printf '#include <limits>\n'; cat "$vrle_source"; } > "$patched_source"
+        mv "$patched_source" "$vrle_source"
+    fi
+
     # rlottie sólo instala inc/rlottie*.h en <prefix>/include; el include que
     # espera RmlUi (`#include <rlottie.h>`) queda cubierto.
     [[ -f "$RLOTTIE_SRC/inc/rlottie.h" ]] || fx_error "fuente de rlottie incompleta en $RLOTTIE_SRC"
