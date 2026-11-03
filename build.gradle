@@ -94,13 +94,51 @@ project(":examples:yaml-ui:desktop") {
     }
 }
 
+project(":examples:rml-ui:core") {
+    apply plugin: "java-library"
+
+    sourceSets.main.java.srcDirs = ["src/"]
+    java.sourceCompatibility = JavaVersion.VERSION_17
+    java.targetCompatibility = JavaVersion.VERSION_17
+
+    dependencies {
+        implementation project(":forcex")
+        implementation project(":extensions:rml-gui")
+    }
+}
+
+project(":examples:rml-ui:desktop") {
+    apply plugin: "java-library"
+
+    sourceSets.main.java.srcDirs = ["src/"]
+    java.sourceCompatibility = JavaVersion.VERSION_17
+    java.targetCompatibility = JavaVersion.VERSION_17
+
+    dependencies {
+        implementation project(":examples:rml-ui:core")
+        implementation project(":desktop-backend")
+        implementation project(":forcex")
+        implementation project(":extensions:rml-gui")
+    }
+}
+
+project(":examples:rml-ui:android") {
+    apply plugin: "android"
+
+    dependencies {
+        implementation project(":examples:rml-ui:core")
+        implementation project(":android-backend")
+        implementation project(":extensions:rml-gui")
+        compileOnly project(":forcex")
+    }
+}
+
 project(":examples:yaml-ui:android") {
     apply plugin: "android"
 
     dependencies {
         implementation project(":examples:yaml-ui:core")
         implementation project(":android-backend")
-        implementation project(":extensions:rml-gui")
         compileOnly project(":forcex")
     }
 }

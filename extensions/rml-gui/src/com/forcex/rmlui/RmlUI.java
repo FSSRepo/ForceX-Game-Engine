@@ -90,6 +90,26 @@ public final class RmlUI {
         nativeRender();
     }
 
+    /**
+     * Builds the {@code src} value that makes an {@code <img>} display an
+     * existing OpenGL texture, such as the color attachment of a render
+     * target, without copying pixels.
+     * <p>
+     * The texture is sampled as-is every frame, so its contents may change.
+     * Ownership stays with the caller: RmlUi will not delete it. If the
+     * render target is resized, assign a new source with the new dimensions.
+     *
+     * @param textureId OpenGL texture name.
+     * @param width     texture width in pixels.
+     * @param height    texture height in pixels.
+     */
+    public static String externalTextureSource(int textureId, int width, int height) {
+        if (textureId <= 0 || width <= 0 || height <= 0) {
+            throw new IllegalArgumentException("textureId, width and height must be positive");
+        }
+        return "fxtex://" + textureId + "/" + width + "/" + height;
+    }
+
     // ------------------------------------------------------------ internal ----
 
     /**
@@ -107,6 +127,20 @@ public final class RmlUI {
     /** Factory used by the bindings to deliver events to Java. */
     static RmlEvent newEvent(String type, String targetId, String currentId) {
         return new RmlEvent(type, targetId, currentId);
+    }
+
+    /**
+     * Native callback: invoked by RmlUi when a text field gains or loses focus.
+     * On Android it shows the native text dialog, prefilled with the field's
+     * current text; the accepted text arrives through
+     * {@code InputListener.onTextInput}.
+     *
+     * @param currentText text already present in the focused field (may be null).
+     */
+    static void setSoftKeyboardVisible(boolean visible, String currentText) {
+        if (FX.device != null) {
+            FX.device.setSoftKeyboardVisible(visible, currentText);
+        }
     }
 
     private static native String nativeGetVersion();

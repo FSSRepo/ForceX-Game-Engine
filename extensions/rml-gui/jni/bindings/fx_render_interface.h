@@ -5,6 +5,7 @@
 
 #include <chrono>
 #include <memory>
+#include <unordered_set>
 #include <vector>
 
 /**
@@ -19,7 +20,10 @@
       (opacity, blur, drop-shadow, color-matrix y mask-image) sin usar
       `glBlitFramebuffer`, que no existe en GLES 2.0.
     - GenerateTexture cubre las texturas de callback que usan los plugins SVG y
-      Lottie, además de las imágenes TGA cargadas por RmlUi.
+      Lottie, además de las imágenes cargadas por RmlUi.
+    - LoadTexture decodifica TGA, PNG y JPEG. También acepta la pseudo-URL
+      `fxtex://<id>/<w>/<h>`, que muestra una textura OpenGL ya existente (por
+      ejemplo el color attachment de un FBO) sin copiar píxeles.
 
     BeginFrame()/EndFrame() deben invocarse en el hilo propietario del contexto GL.
 */
@@ -252,6 +256,10 @@ private:
 
 	Rml::Rectanglei scissor_region_ = Rml::Rectanglei::MakeInvalid();
 	bool scissor_enabled_ = false;
+
+	// Texturas de `fxtex://` cuyo ciclo de vida pertenece al motor, no a RmlUi.
+	// ReleaseTexture no debe destruirlas.
+	std::unordered_set<unsigned int> external_textures_;
 
 	Rml::Matrix4f projection_ = Rml::Matrix4f::Identity();
 	Rml::Matrix4f transform_ = Rml::Matrix4f::Identity();

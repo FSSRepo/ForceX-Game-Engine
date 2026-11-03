@@ -17,6 +17,10 @@ import java.util.Iterator;
 public class ParticleRenderer {
     // limite de particulas vivas; las nuevas se descartan al llegar al tope
     public int maxParticles = 3000;
+    // suma el color (SRC_ALPHA, ONE) en vez de mezclar: coronas y destellos
+    public boolean additive = false;
+    // funciones de mezcla (GL_*); additive fuerza el destino a GL_ONE
+    public int blendSrc = GL.GL_SRC_ALPHA, blendDst = GL.GL_ONE_MINUS_SRC_ALPHA;
 
     ArrayList<Particle> particles = new ArrayList<>();
     int vbo, texture;
@@ -25,6 +29,7 @@ public class ParticleRenderer {
     GL gl = FX.gl;
     Matrix4f mm = new Matrix4f();
     Matrix4f mv = new Matrix4f();
+    Matrix4f ls = new Matrix4f();
     float[] vertices = {
             -1, 1, 0, 0,
             -1, -1, 0, 1,
@@ -98,13 +103,15 @@ public class ParticleRenderer {
     }
 
     private void renderParticle(Particle particle, Camera camera) {
-        shader.setMVPMatrix(updateMVP(particle.position, particle.scale, camera));
+        shader.setMVPMatrix(updateMVP(particle, camera));
         shader.setParticleColor(particle.color);
+        shader.setUvRect(particle.u0, particle.v0, particle.u1 - particle.u0, particle.v1 - particle.v0);
         gl.glDrawArrays(GL.GL_TRIANGLE_STRIP, 0, 4);
     }
 
     // billboard: la rotacion del modelo es la transpuesta de la de la vista
-    private Matrix4f updateMVP(Vector3f position, float scale, Camera cam) {
+    private Matrix4f updateMVP(Particle particle, Camera cam) {
+        Vector3f position = particle.position;
         Matrix4f vm = cam.getViewMatrix();
         mm.setLocation(position);
         mm.data[Matrix4f.M00] = vm.data[Matrix4f.M00];
@@ -117,14 +124,22 @@ public class ParticleRenderer {
         mm.data[Matrix4f.M21] = vm.data[Matrix4f.M12];
         mm.data[Matrix4f.M22] = vm.data[Matrix4f.M22];
         vm.mult(mv, mm);
-        mv.multLocal(Matrix4f.scale(scale));
+        // giro alrededor del eje de vista y proporcion del sprite
+        float cos = (float) Math.cos(particle.rotation), sin = (float) Math.sin(particle.rotation);
+        ls.setScale(1f);
+        ls.data[Matrix4f.M00] = cos * particle.scale;
+        ls.data[Matrix4f.M01] = sin * particle.scale;
+        ls.data[Matrix4f.M10] = -sin * particle.scale * particle.aspect;
+        ls.data[Matrix4f.M11] = cos * particle.scale * particle.aspect;
+        ls.data[Matrix4f.M22] = particle.scale;
+        mv.multLocal(ls);
         return cam.getProjectionMatrix().mult(null, mv);
     }
 
     private void begin() {
         shader.start();
         gl.glEnable(GL.GL_BLEND);
-        gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+        gl.glBlendFunc(blendSrc, additive ? GL.GL_ONE : blendDst);
         gl.glDepthMask(false);
         gl.glBindBuffer(GL.GL_ARRAY_BUFFER, vbo);
         gl.glVertexAttribPointer(shader.attribute_vertex, 4, GL.GL_FLOAT, false, 0, 0);

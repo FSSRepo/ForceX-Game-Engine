@@ -1,17 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-
     <application
         android:allowBackup="true"
-        android:label="RmlUi Demo"
-        android:requestLegacyExternalStorage="true"
+        android:label="YAML UI Demo"
         android:resizeableActivity="true">
         <activity
-            android:name="com.fx.demo.android.MainActivity"
-            android:label="RmlUi Demo"
+            android:name="com.fx.demo.yamlui.MainActivity"
+            android:label="YAML UI Demo"
             android:exported="true"
             android:screenOrientation="landscape"
             android:configChanges="orientation|keyboardHidden|screenSize">

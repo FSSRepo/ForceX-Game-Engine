@@ -1,0 +1,33 @@
+apply plugin: 'application'
+
+sourceSets.main.java.srcDirs = ["src/"]
+
+java.sourceCompatibility = JavaVersion.VERSION_17
+java.targetCompatibility = JavaVersion.VERSION_17
+
+def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
+def nativeDistDir = isWindows ? '../../../dist/desktop' : '../../../dist/linux'
+def fxLibName = isWindows ? 'fxcore.dll' : 'libfxcore.so'
+def rmlLibName = isWindows ? 'fxrmlui.dll' : 'libfxrmlui.so'
+def rmlBuildDir = isWindows ? '../../../build-natives/windows/Release' : '../../../build-natives/linux/Release'
+
+// Copia el binario del engine, el de RmlUi y los assets de la demo al directorio de trabajo.
+task prepareRun(type: Copy) {
+    // El nativo de RmlUi puede venir de dist/ o de una compilación reciente: la
+    // segunda copia (INCLUDE, en orden) prevalece sobre la primera.
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    from(nativeDistDir) { include fxLibName, rmlLibName }
+    from(rmlBuildDir) { include rmlLibName }
+    from('../core/assets') { into 'assets' }
+    into 'build/libs'
+}
+
+application {
+    mainClass = 'com.fx.demo.desktop.RmlUiLauncher'
+}
+
+run {
+    dependsOn prepareRun
+    workingDir = file('build/libs')
+    jvmArgs '-Djava.library.path=.'
+}

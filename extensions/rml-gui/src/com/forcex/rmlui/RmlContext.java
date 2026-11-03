@@ -66,6 +66,35 @@ public final class RmlContext {
         nativeSetElementClass(handle, elementId, className, enable);
     }
 
+    /** Asigna un atributo al elemento indicado (por ejemplo {@code src}). */
+    public void setElementAttribute(String elementId, String name, String value) {
+        nativeSetElementAttribute(handle, elementId, name, value);
+    }
+
+    /**
+     * Reemplaza el contenido del campo de texto enfocado. Útil cuando la
+     * plataforma edita el texto fuera de RmlUi (diálogo nativo o IME), ya que
+     * permite asignar el resultado completo en vez de insertarlo carácter a
+     * carácter.
+     *
+     * @return true si había un campo de texto enfocado.
+     */
+    public boolean setFocusedValue(String value) {
+        return nativeSetFocusedValue(handle, value);
+    }
+
+    /**
+     * Muestra una textura OpenGL existente (por ejemplo el color attachment de
+     * un FBO) dentro de un {@code <img>}, sin copiar píxeles.
+     * <p>
+     * La textura se muestrea tal cual en cada frame, así que su contenido puede
+     * cambiar. Su propiedad sigue siendo del motor: RmlUi no la destruye. Si el
+     * render target cambia de tamaño, vuelve a llamar con las dimensiones nuevas.
+     */
+    public void setImageTexture(String elementId, int textureId, int width, int height) {
+        setElementAttribute(elementId, "src", RmlUI.externalTextureSource(textureId, width, height));
+    }
+
     /** Envía movimiento de ratón/touch en coordenadas lógicas de pantalla. */
     public void processMouseMove(int x, int y, int modifiers) {
         nativeProcessMouseMove(handle, x, y, modifiers);
@@ -118,6 +147,10 @@ public final class RmlContext {
     private static native void nativeSetInnerRml(long handle, String elementId, String rml);
 
     private static native void nativeSetElementClass(long handle, String elementId, String className, boolean enable);
+
+    private static native boolean nativeSetElementAttribute(long handle, String elementId, String name, String value);
+
+    private static native boolean nativeSetFocusedValue(long handle, String value);
 
     private static native void nativeProcessMouseMove(long handle, int x, int y, int modifiers);
 

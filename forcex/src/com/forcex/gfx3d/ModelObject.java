@@ -20,6 +20,9 @@ public class ModelObject {
     private short id = -1;
     private boolean shadow_map_cullface = true;
     private boolean effect_animator = true;
+    // mezcla aditiva (SRC_ALPHA, ONE) y escritura de profundidad, para luces y decals
+    private boolean additive_blend = false;
+    private boolean depth_write = true;
 
     public ModelObject(Mesh mesh) {
         this.mesh = mesh;
@@ -151,11 +154,24 @@ public class ModelObject {
         lighting = z;
     }
 
+    /** Dibuja sumando el color (SRC_ALPHA, ONE) en vez de mezclar; el alfa del material es la intensidad. */
+    public void setAdditiveBlend(boolean z) {
+        additive_blend = z;
+    }
+
+    /** Con false no escribe profundidad: los decals y luces no tapan lo que se dibuje despues. */
+    public void setDepthWrite(boolean z) {
+        depth_write = z;
+    }
+
     public void render(DefaultShader shader) {
         if (visible) {
             shader.setModelMatrix(transform);
             FX.gl.glEnable(GL.GL_BLEND);
-            FX.gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+            FX.gl.glBlendFunc(GL.GL_SRC_ALPHA, additive_blend ? GL.GL_ONE : GL.GL_ONE_MINUS_SRC_ALPHA);
+            if (!depth_write) {
+                FX.gl.glDepthMask(false);
+            }
             if (!mesh.isClone && !mesh.started) {
                 mesh.initialize();
             }
@@ -164,6 +180,9 @@ public class ModelObject {
                 mesh.render(shader, lighting, animator);
             } else {
                 mesh.render(shader, lighting);
+            }
+            if (!depth_write) {
+                FX.gl.glDepthMask(true);
             }
             FX.gl.glDisable(GL.GL_BLEND);
         }

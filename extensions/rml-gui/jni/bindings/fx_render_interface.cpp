@@ -2,6 +2,16 @@
 
 #include "fx_gl.h"
 
+// stb_image sólo para PNG/JPEG: TGA se decodifica a mano más abajo. Se compila en
+// modo estático para no exportar símbolos stbi_* desde libfxrmlui (libfxcore ya
+// enlaza su propia copia).
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_STATIC
+#define STBI_NO_STDIO
+#define STBI_ONLY_PNG
+#define STBI_ONLY_JPEG
+#include "stb/stb_image.h"
+
 #include <RmlUi/Core/Colour.h>
 #include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/DecorationTypes.h>
@@ -1327,8 +1337,41 @@ struct TGAHeader
 };
 #pragma pack()
 
+// Pseudo-URL `fxtex://<id>/<ancho>/<alto>`: textura OpenGL que ya existe en el
+// contexto (p. ej. el color attachment de un FBO). Evita copiar píxeles y no
+// transfiere la propiedad de la textura a RmlUi.
+static bool ParseExternalTextureSource(const Rml::String& source, unsigned int& texture_id, int& width, int& height)
+{
+	const size_t scheme = source.find("fxtex://");
+	if (scheme == Rml::String::npos)
+		return false;
+
+	unsigned long id = 0;
+	int w = 0, h = 0;
+	if (std::sscanf(source.c_str() + scheme + 8, "%lu/%d/%d", &id, &w, &h) != 3)
+		return false;
+	if (id == 0 || w <= 0 || h <= 0)
+		return false;
+
+	texture_id = static_cast<unsigned int>(id);
+	width = w;
+	height = h;
+	return true;
+}
+
 Rml::TextureHandle FxRenderInterface::LoadTexture(Rml::Vector2i& texture_dimensions, const Rml::String& source)
 {
+	unsigned int external_texture = 0;
+	int external_width = 0, external_height = 0;
+	if (ParseExternalTextureSource(source, external_texture, external_width, external_height))
+	{
+		texture_dimensions.x = external_width;
+		texture_dimensions.y = external_height;
+
+		external_textures_.insert(external_texture);
+		return static_cast<Rml::TextureHandle>(external_texture);
+	}
+
 	Rml::FileInterface* file_interface = Rml::GetFileInterface();
 	if (!file_interface)
 		return 0;
@@ -1341,9 +1384,8 @@ Rml::TextureHandle FxRenderInterface::LoadTexture(Rml::Vector2i& texture_dimensi
 	const size_t buffer_size = file_interface->Tell(file_handle);
 	file_interface->Seek(file_handle, 0, SEEK_SET);
 
-	if (buffer_size <= sizeof(TGAHeader))
+	if (buffer_size == 0)
 	{
-		Rml::Log::Message(Rml::Log::LT_ERROR, "fxrmlui: el archivo de textura es menor que una cabecera TGA");
 		file_interface->Close(file_handle);
 		return 0;
 	}
@@ -1352,6 +1394,60 @@ Rml::TextureHandle FxRenderInterface::LoadTexture(Rml::Vector2i& texture_dimensi
 	Rml::UniquePtr<byte[]> buffer(new byte[buffer_size]);
 	file_interface->Read(buffer.get(), buffer_size, file_handle);
 	file_interface->Close(file_handle);
+
+	// PNG y JPEG se identifican por firma; el resto se trata como TGA, que no
+	// tiene número mágico y siempre fue el único formato soportado.
+	const bool is_png = buffer_size >= 8 && buffer[0] == 0x89 && buffer[1] == 'P' && buffer[2] == 'N' && buffer[3] == 'G';
+	const bool is_jpeg = buffer_size >= 3 && buffer[0] == 0xFF && buffer[1] == 0xD8 && buffer[2] == 0xFF;
+
+	if (is_png || is_jpeg)
+	{
+		int width = 0, height = 0, channels = 0;
+		unsigned char* decoded = stbi_load_from_memory(buffer.get(), static_cast<int>(buffer_size), &width, &height, &channels, 4);
+		if (!decoded)
+		{
+			Rml::Log::Message(Rml::Log::LT_ERROR, "fxrmlui: no se pudo decodificar la textura (%s)", source.c_str());
+			return 0;
+		}
+
+		const size_t pixel_count = static_cast<size_t>(width) * static_cast<size_t>(height);
+		Rml::UniquePtr<byte[]> image_dest_buffer(new byte[pixel_count * 4]);
+		byte* image_dest = image_dest_buffer.get();
+
+		// stb entrega RGBA sin premultiplicar, con la primera fila arriba: mismo
+		// orden que el resto del renderer. RmlUi espera alfa premultiplicado.
+		for (size_t i = 0; i < pixel_count; i++)
+		{
+			const size_t index = i * 4;
+			const byte alpha = decoded[index + 3];
+
+			if (alpha == 255)
+			{
+				image_dest[index] = decoded[index];
+				image_dest[index + 1] = decoded[index + 1];
+				image_dest[index + 2] = decoded[index + 2];
+			}
+			else
+			{
+				for (size_t j = 0; j < 3; j++)
+					image_dest[index + j] = byte((decoded[index + j] * alpha) / 255);
+			}
+			image_dest[index + 3] = alpha;
+		}
+
+		stbi_image_free(decoded);
+
+		texture_dimensions.x = width;
+		texture_dimensions.y = height;
+
+		return GenerateTexture({image_dest, pixel_count * 4}, texture_dimensions);
+	}
+
+	if (buffer_size <= sizeof(TGAHeader))
+	{
+		Rml::Log::Message(Rml::Log::LT_ERROR, "fxrmlui: el archivo de textura es menor que una cabecera TGA");
+		return 0;
+	}
 
 	TGAHeader header;
 	memcpy(&header, buffer.get(), sizeof(TGAHeader));
@@ -1454,6 +1550,11 @@ void FxRenderInterface::ReleaseTexture(Rml::TextureHandle texture)
 		return;
 
 	GLuint texture_id = static_cast<GLuint>(texture);
+
+	// Las texturas de `fxtex://` son del motor: sólo se olvida la referencia.
+	if (external_textures_.erase(texture_id) > 0)
+		return;
+
 	glDeleteTextures(1, &texture_id);
 }
 

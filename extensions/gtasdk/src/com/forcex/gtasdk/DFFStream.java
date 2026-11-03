@@ -432,10 +432,11 @@ public class DFFStream {
                             is.skip(4);
                             dff.hasCollision = true;
                             dff.col_id = randomKey();
+                            dff.collisionData = is.readByteArray(colSize);
                             if (save_collisions_dir != null) {
                                 // FX.fs.homeDirectory + "zmdl/"+dff.col_id+".col"
                                 FileOutputStream col = new FileOutputStream(save_collisions_dir + dff.col_id + ".col");
-                                col.write(is.readByteArray(colSize));
+                                col.write(dff.collisionData);
                                 col.close();
                             }
                         }
@@ -859,15 +860,17 @@ public class DFFStream {
         if (dff.hasCollision) {
             byte[] col = null;
             extension.writeInt(COLLISION_MODEL);
-            try {
+            if (dff.collisionData != null) {
+                col = dff.collisionData;
+            } else try {
                 BinaryStreamReader is = FX.fs.open("zmdl/" + dff.col_id + ".col", FileSystem.ReaderType.STREAM);
-                extension.writeInt(is.length());
                 col = is.readByteArray(is.length());
                 is.clear();
             } catch (Exception e) {
                 clump.addSection(extension);
                 return;
             }
+            extension.writeInt(col.length);
             extension.writeInt(dff.game);
             extension.writeByteArray(col);
         }

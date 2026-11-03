@@ -21,6 +21,16 @@ void FxSystemInterface::JoinPath(Rml::String& translated_path, const Rml::String
 		translated_path.erase(0, 7);
 }
 
+void FxSystemInterface::ActivateKeyboard(Rml::Vector2f /*caret_position*/, float /*line_height*/)
+{
+	FxNotifySoftKeyboard(true);
+}
+
+void FxSystemInterface::DeactivateKeyboard()
+{
+	FxNotifySoftKeyboard(false);
+}
+
 bool FxSystemInterface::LogMessage(Rml::Log::Type type, const Rml::String& message)
 {
 	const char* level = "INFO";

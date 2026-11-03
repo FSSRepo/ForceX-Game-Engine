@@ -22,6 +22,8 @@ public class DFFSDK {
     public int geometryCount;
     public int game;
     public boolean hasCollision;
+    /** Raw RenderWare COL model embedded in the clump extension, when present. */
+    public byte[] collisionData;
     public String col_id = "";
     public boolean errorNames = false;
     public String name = "";

@@ -25,6 +25,7 @@ JavaVM* g_java_vm = nullptr;
 jclass g_rmlui_class = nullptr;
 jmethodID g_read_file_method = nullptr;
 jmethodID g_new_event_method = nullptr;
+jmethodID g_set_keyboard_method = nullptr;
 
 struct FxRuntime
 {
@@ -250,6 +251,34 @@ void RemoveDocumentListeners(Rml::ElementDocument* document)
 
 } // namespace
 
+void FxNotifySoftKeyboard(bool visible)
+{
+	JNIEnv* env = GetJniEnv();
+	if (!env || !g_rmlui_class || !g_set_keyboard_method)
+		return;
+
+	// El texto actual del campo enfocado se envía a la plataforma para que su
+	// diálogo/teclado pueda mostrarlo y editarlo en lugar de empezar vacío.
+	jstring current_text = nullptr;
+	if (visible && g_runtime && g_runtime->context)
+	{
+		Rml::Element* focused = g_runtime->context->GetFocusElement();
+		if (auto* control = rmlui_dynamic_cast<Rml::ElementFormControl*>(focused))
+			current_text = env->NewStringUTF(control->GetValue().c_str());
+	}
+
+	env->CallStaticVoidMethod(g_rmlui_class, g_set_keyboard_method, visible ? JNI_TRUE : JNI_FALSE, current_text);
+
+	if (current_text)
+		env->DeleteLocalRef(current_text);
+
+	if (env->ExceptionCheck())
+	{
+		env->ExceptionDescribe();
+		env->ExceptionClear();
+	}
+}
+
 extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
 {
 	g_java_vm = vm;
@@ -266,6 +295,7 @@ extern "C" JNIEXPORT void JNICALL JNI_OnUnload(JavaVM* /*vm*/, void* /*reserved*
 	g_rmlui_class = nullptr;
 	g_read_file_method = nullptr;
 	g_new_event_method = nullptr;
+	g_set_keyboard_method = nullptr;
 	g_java_vm = nullptr;
 }
 
@@ -291,12 +321,14 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_forcex_rmlui_RmlUI_nativeInit(JNI
 		g_read_file_method = env->GetStaticMethodID(clazz, "readFile", "(Ljava/lang/String;)[B");
 		g_new_event_method = env->GetStaticMethodID(clazz, "newEvent",
 			"(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lcom/forcex/rmlui/RmlEvent;");
+		g_set_keyboard_method = env->GetStaticMethodID(clazz, "setSoftKeyboardVisible", "(ZLjava/lang/String;)V");
 
-		if (env->ExceptionCheck() || !g_read_file_method || !g_new_event_method)
+		if (env->ExceptionCheck() || !g_read_file_method || !g_new_event_method || !g_set_keyboard_method)
 		{
 			env->ExceptionClear();
 			g_read_file_method = nullptr;
 			g_new_event_method = nullptr;
+			g_set_keyboard_method = nullptr;
 			return JNI_FALSE;
 		}
 	}
@@ -452,6 +484,39 @@ extern "C" JNIEXPORT void JNICALL Java_com_forcex_rmlui_RmlContext_nativeSetElem
 	const std::string name = ToString(env, class_name);
 	if (Rml::Element* element = context->GetRootElement()->GetElementById(id.c_str()))
 		element->SetClass(name.c_str(), enable == JNI_TRUE);
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_com_forcex_rmlui_RmlContext_nativeSetElementAttribute(
+	JNIEnv* env, jclass, jlong handle, jstring element_id, jstring name, jstring value)
+{
+	Rml::Context* context = ToContext(handle);
+	if (!context || !element_id || !name)
+		return JNI_FALSE;
+
+	const std::string id = ToString(env, element_id);
+	Rml::Element* element = context->GetRootElement()->GetElementById(id.c_str());
+	if (!element)
+		return JNI_FALSE;
+
+	element->SetAttribute(ToString(env, name), value ? ToString(env, value) : Rml::String());
+	return JNI_TRUE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_com_forcex_rmlui_RmlContext_nativeSetFocusedValue(
+	JNIEnv* env, jclass, jlong handle, jstring value)
+{
+	Rml::Context* context = ToContext(handle);
+	if (!context || !value)
+		return JNI_FALSE;
+
+	// Reemplaza el contenido del campo de texto enfocado (en vez de insertarlo al
+	// final): así el diálogo nativo puede precargar y editar el texto existente.
+	auto* control = rmlui_dynamic_cast<Rml::ElementFormControl*>(context->GetFocusElement());
+	if (!control)
+		return JNI_FALSE;
+
+	control->SetValue(ToString(env, value));
+	return JNI_TRUE;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_forcex_rmlui_RmlContext_nativeProcessMouseMove(

@@ -19,6 +19,7 @@ ForceX is a cross-platform 2D/3D game engine written in Java with native backend
 - **Threading**: TaskPool system for background jobs
 - **3D Math**: Vectors, matrices, quaternions, planes, rays, and geometric utilities
 - **GTA Extension**: RenderWare DFF/IFP file support via `extensions/gtasdk`
+- **Headless desktop mode**: run the full game loop and OpenGL rendering without ever showing a window (`FXAppConfig.headless` or `-Dforcex.headless=true`); useful for autotests, CI and offscreen rendering
 
 ---
 
@@ -119,6 +120,28 @@ After building, the distribution files are placed in `dist/`:
 
 The engine native is loaded by `NativeLoader`, which supports **Windows, Linux and macOS** on `amd64` and `aarch64`. It first looks for the binary embedded in the jar under `natives/<os>/<arch>/`; when present, it is extracted to a temporary folder and loaded with `System.load(...)`, so **no `java.library.path` entry is required**. If the binary is not embedded (for example during development), it falls back to `System.loadLibrary(...)`, resolved through `java.library.path` and the working directory.
 
+### Headless mode (no visible window)
+
+The desktop backend can create its OpenGL context on a window that is never shown. Nothing else changes: `create()`, `render(dt)`, framebuffer rendering, audio and input polling keep running.
+
+```java
+FXAppConfig config = new FXAppConfig();
+config.headless = true;   // or run with -Dforcex.headless=true
+```
+
+In headless mode the window is created hidden, unfocused and undecorated, `glfwShowWindow` is never called, fullscreen and the window icon are ignored, and `isVisible()` reports `true` so the app is not treated as being in the background. `ForceXApp.isHeadless()` tells you which mode is active. An OpenGL-capable GPU/driver is still required (the context is real); this is "no visible window", not software rendering.
+
+### Resizable window
+
+```java
+FXAppConfig config = new FXAppConfig();
+config.resizable = true;
+config.min_width = 1280;    // 0 = no limit
+config.min_height = 720;
+```
+
+The user can drag the edges or maximize; the backend calls `Game.resize(width, height)` with the new framebuffer size and updates `FX.gpu.getWidth()/getHeight()`. A minimized window (0x0) is ignored. Ignored in fullscreen and headless modes. The default stays non-resizable.
+
 ### Desktop Integration
 
 1. Copy the platform libraries from the distribution folder to your project's `libs/`:
@@ -193,25 +216,20 @@ The repository includes sample projects to help you get started:
 
 | Example | Description |
 |---------|-------------|
-| `examples/rpg-car` | RPG-style car game with physics |
-| `examples/yaml-ui` | UI showcase: YAML-driven widgets and an RmlUi demo (`-Prmlui` on desktop) |
+| `examples/yaml-ui` | UI showcase: YAML-driven widgets (buttons, edit text, progress bar) |
+| `examples/rml-ui` | RmlUi showcase: HTML/CSS UI, inline SVG, Lottie, `backdrop-filter` layers and Java events |
 
 Each example contains `core/`, `desktop/`, and `android/` submodules.
 
 ### Running the desktop example
 
-After running `build.bat` (Windows) or `build.sh` (Linux) once to produce `dist/`, assemble the runnable folder:
+After running `build.bat` (Windows) or `build.sh` (Linux) once to produce `dist/`:
 
 ```bash
-gradlew :examples:rpg-car:desktop:dist
+gradlew :examples:yaml-ui:desktop:run
+gradlew :examples:rml-ui:desktop:run    # requires the RmlUi native (fxrmlui.dll / libfxrmlui.so)
 ```
 
-This creates `examples/rpg-car/desktop/output/`: the fat jar (with the engine native embedded inside it), the game assets, and the third-party native as a loose file. Run it **from that folder** so the loose `openpl64.dll` / `libopenpl64.so` is resolved through the working directory:
-
-```bash
-cd examples/rpg-car/desktop/output
-java -jar rpg-car.jar-all.jar
-```
-
-> On Windows, double-clicking the jar works too, since the working directory is set to the jar's folder.
+`run` copies the engine native and the example assets into `desktop/build/libs/`, which is used
+as the working directory so the native is resolved through `java.library.path=.`.
 

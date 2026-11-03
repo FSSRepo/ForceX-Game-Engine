@@ -11,6 +11,7 @@ import com.forcex.core.GL;
 import com.forcex.core.gpu.GPUDevice;
 
 import java.util.ArrayList;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -26,7 +27,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, GPUDevice {
     private long lastTime = 0;
     private long frameStart = 0;
     private float deltaTime;
-    private final ArrayList<Task> tasks = new ArrayList<>();
+    private final ConcurrentLinkedQueue<Task> tasks = new ConcurrentLinkedQueue<>();
 
     boolean created = false;
     boolean running = false;
@@ -96,7 +97,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, GPUDevice {
 
     @Override
     public void queueTask(Task task) {
-        tasks.add(task);
+        tasks.offer(task);
     }
 
     @Override
@@ -197,15 +198,10 @@ public class GLRenderer implements GLSurfaceView.Renderer, GPUDevice {
 			input_processor.processEvent();
         }
         for (int i = 0; i < 5; i++) {
-            if (i < tasks.size()) {
-                Task task = tasks.get(i);
-                if (task != null) {
-                    if (task.execute()) {
-                        tasks.remove(task);
-                    }
-                } else {
-                    tasks.remove(i);
-                    break;
+            Task task = tasks.poll();
+            if (task != null) {
+                if (!task.execute()) {
+                    tasks.offer(task);
                 }
             } else {
                 break;
@@ -215,7 +211,11 @@ public class GLRenderer implements GLSurfaceView.Renderer, GPUDevice {
 
     @Override
     public boolean hasTaskInQueue() {
-        return tasks.size() > 0;
+        return !tasks.isEmpty();
+    }
+
+    public boolean isRenderThreadReady() {
+        return created;
     }
 
 
@@ -248,15 +248,8 @@ public class GLRenderer implements GLSurfaceView.Renderer, GPUDevice {
 
     @Override
     public void waitEmptyQueue() {
-        while (true) {
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-
-            }
-            if (!hasTaskInQueue()) {
-                return;
-            }
+        while (!tasks.isEmpty()) {
+            try { Thread.sleep(1); } catch (InterruptedException ignored) {}
         }
     }
 

@@ -140,6 +140,19 @@ public final class RmlUIInput implements InputListener {
         }
     }
 
+    /**
+     * Texto completo aceptado en la plataforma (diálogo nativo, IME...). Se asigna
+     * al campo enfocado en lugar de insertarse carácter a carácter, porque la
+     * plataforma ya partía del texto existente.
+     */
+    @Override
+    public void onTextInput(String text) {
+        if (context == null || text == null) {
+            return;
+        }
+        context.setFocusedValue(text);
+    }
+
     private void setModifier(int bit, boolean enabled) {
         if (enabled) {
             modifiers |= bit;
@@ -158,9 +171,10 @@ public final class RmlUIInput implements InputListener {
         }
         switch (key) {
             case Key.KEY_SPACE: return ' ';
-            case Key.KEY_ENTER: return '\n';
             case Key.KEY_DOT: return '.';
             case Key.KEY_MINUS: return (modifiers & 2) != 0 ? '_' : '-';
+            // Enter no se envía como texto: RmlUi lo trata en el keydown (envía
+            // el formulario o inserta el salto de línea según el campo).
             default: return 0;
         }
     }

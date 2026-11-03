@@ -120,6 +120,13 @@ add_library(fxrmlui SHARED
 target_compile_features(fxrmlui PRIVATE cxx_std_17)
 set_target_properties(fxrmlui PROPERTIES OUTPUT_NAME "fxrmlui")
 
+# stb_image (PNG/JPEG) se toma del motor para no duplicar la cabecera.
+set(FX_STB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../forcex/jni")
+if(NOT EXISTS "${FX_STB_DIR}/stb/stb_image.h")
+    message(FATAL_ERROR "No se encontró ${FX_STB_DIR}/stb/stb_image.h (requerido para PNG/JPEG)")
+endif()
+target_include_directories(fxrmlui PRIVATE "${FX_STB_DIR}")
+
 target_link_libraries(fxrmlui PRIVATE
     RmlUi::RmlUi
     Freetype::Freetype

@@ -18,7 +18,22 @@ public class Particle {
     public final Color startColor = new Color();
     public final Color endColor = new Color();
     public final Color color = new Color();
+    // giro del sprite alrededor del eje de vista (radianes) y su velocidad angular (rad/s)
+    public float rotation, rotationSpeed;
+    // relacion alto/ancho del sprite
+    public float aspect = 1f;
+    // rectangulo de la textura que se dibuja (u0,v0)-(u1,v1)
+    public float u0 = 0f, v0 = 0f, u1 = 1f, v1 = 1f;
+    // comportamiento propio: se llama en cada paso, despues de integrar velocidad y posicion
+    public Updater updater;
+    // true: el updater fija scale y color; no se interpolan startScale/endScale ni startColor/endColor
+    public boolean manualAppearance;
     private float elapsedTime;
+
+    /** Comportamiento a medida de una particula (efectos que no encajan en la interpolacion simple). */
+    public interface Updater {
+        void update(Particle particle, float delta);
+    }
 
     public Particle(float lifetime) {
         this.lifetime = lifetime;
@@ -33,8 +48,21 @@ public class Particle {
         }
         position.addLocal(velocity.mult(delta));
         elapsedTime += delta;
-        updateState();
+        rotation += rotationSpeed * delta;
+        if (manualAppearance) {
+            liveFactor = Math.min(1f, elapsedTime / lifetime);
+        } else {
+            updateState();
+        }
+        if (updater != null) {
+            updater.update(this, delta);
+        }
         return elapsedTime < lifetime;
+    }
+
+    /** Segundos de vida transcurridos. */
+    public float getElapsedTime() {
+        return elapsedTime;
     }
 
     private void updateState() {

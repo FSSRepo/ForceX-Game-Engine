@@ -307,6 +307,15 @@ bool PropertySpecification::ParseShorthandDeclaration(PropertyDictionary& dictio
 	}
 	RMLUI_ASSERT(!property_values.empty());
 
+	// ForceX: acepta la palabra 'solid' en los shorthand 'border*' para poder compartir CSS con navegadores.
+	// RmlUi solo dibuja bordes lisos, así que el valor se descarta.
+	if (shorthand_id == ShorthandId::Border || shorthand_id == ShorthandId::BorderTop || shorthand_id == ShorthandId::BorderRight ||
+		shorthand_id == ShorthandId::BorderBottom || shorthand_id == ShorthandId::BorderLeft)
+	{
+		property_values.erase(std::remove_if(property_values.begin(), property_values.end(), [](const String& v) { return v == "solid"; }),
+			property_values.end());
+	}
+
 	// Handle the special behavior of the flex shorthand first, otherwise it acts like 'FallThrough'.
 	if (shorthand_definition->type == ShorthandType::Flex && !property_values.empty())
 	{

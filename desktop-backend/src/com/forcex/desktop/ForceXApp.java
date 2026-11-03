@@ -36,6 +36,13 @@ public class ForceXApp implements SystemDevice {
 
     InputProcessor input_processor;
 
+    private boolean headless;
+
+    /** True when the window was created hidden and stays hidden (see {@link FXAppConfig#headless}). */
+    public boolean isHeadless() {
+        return headless;
+    }
+
     public void initialize(Game game, FXAppConfig config) {
         FX.fs = new FileSystem() {
             @Override
@@ -46,6 +53,8 @@ public class ForceXApp implements SystemDevice {
         FileSystem.homeDirectory = config.resources_dir.isEmpty() ? "data/" : config.resources_dir;
         GLFWErrorCallback.createPrint(System.err).set();
 
+        headless = config.headless;
+
         // Initialize GLFW. Most GLFW functions will not work before doing this.
         if ( !glfwInit() )
             throw new IllegalStateException("Unable to initialize GLFW");
@@ -53,7 +62,12 @@ public class ForceXApp implements SystemDevice {
         // Configure GLFW
         glfwDefaultWindowHints();
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+        glfwWindowHint(GLFW_RESIZABLE, config.resizable && !config.fullscreen && !config.headless ? GLFW_TRUE : GLFW_FALSE);
+        if (headless) {
+            glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
+            glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_FALSE);
+            glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+        }
 
         PointerBuffer pb = glfwGetMonitors();
         assert pb != null;
@@ -62,11 +76,12 @@ public class ForceXApp implements SystemDevice {
         long primaryMonitor = glfwGetPrimaryMonitor();
 
         // Create the window
-        window = glfwCreateWindow(config.width, config.height, config.title, config.fullscreen ? primaryMonitor : NULL, NULL);
+        boolean fullscreen = config.fullscreen && !headless;
+        window = glfwCreateWindow(config.width, config.height, config.title, fullscreen ? primaryMonitor : NULL, NULL);
         if ( window == NULL )
             throw new RuntimeException("Failed to create the GLFW window");
 
-        if(!config.fullscreen) {
+        if(!fullscreen && !headless) {
             try ( MemoryStack stack = stackPush() ) {
                 IntBuffer pWidth = stack.mallocInt(1); // int*
                 IntBuffer pHeight = stack.mallocInt(1); // int*
@@ -83,12 +98,21 @@ public class ForceXApp implements SystemDevice {
             }
         }
 
+        if (config.resizable && !fullscreen && !headless && (config.min_width > 0 || config.min_height > 0)) {
+            glfwSetWindowSizeLimits(window,
+                    config.min_width > 0 ? config.min_width : GLFW_DONT_CARE,
+                    config.min_height > 0 ? config.min_height : GLFW_DONT_CARE,
+                    GLFW_DONT_CARE, GLFW_DONT_CARE);
+        }
+
         // Make the OpenGL context current
         glfwMakeContextCurrent(window);
         // Enable v-sync
         glfwSwapInterval(config.vsync ? 1 : 0);
-        // Make the window visible
-        glfwShowWindow(window);
+        // Make the window visible (never in headless mode: the context lives on a hidden window)
+        if (!headless) {
+            glfwShowWindow(window);
+        }
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
@@ -114,7 +138,7 @@ public class ForceXApp implements SystemDevice {
         input_processor = new InputProcessor(this);
         input_processor.init();
 
-        if (config.icon_path.length() > 0) {
+        if (!headless && config.icon_path.length() > 0) {
             int[] icons_sizes = {16, 32, 128};
             ArrayList<ByteBuffer> icons_loaded = new ArrayList<>();
             for (int i = 0; i < 3; i++) {
@@ -162,7 +186,8 @@ public class ForceXApp implements SystemDevice {
     }
 
     protected boolean isVisible() {
-        return glfwGetWindowAttrib(window, GLFW_VISIBLE) == 1;
+        // a headless window is hidden by design; it must not look like the app went to the background
+        return headless || glfwGetWindowAttrib(window, GLFW_VISIBLE) == 1;
     }
 
     protected void destroyWindow() {

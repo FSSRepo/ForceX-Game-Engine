@@ -19,6 +19,7 @@ import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -41,6 +42,7 @@ public class ForceXApp extends Activity implements SystemDevice {
     private GLRenderer renderer;
     private Game game;
     private boolean fullScreen;
+    private volatile boolean text_input_open;
 
     // Oculta barras de sistema (modo inmersivo) y usa también la zona del recorte de cámara.
     private void applyImmersiveMode() {
@@ -198,6 +200,8 @@ public class ForceXApp extends Activity implements SystemDevice {
             final EditText input = new EditText(this);
             input.setText(current_text == null ? "" : current_text);
             input.setSelection(input.getText().length());
+            input.setSingleLine(true);
+            input.setImeOptions(EditorInfo.IME_ACTION_DONE | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
             if (hint != null && hint.length() > 0) {
                 input.setHint(hint);
             }
@@ -206,19 +210,38 @@ public class ForceXApp extends Activity implements SystemDevice {
             } else if (password) {
                 input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
             }
+            input.setOnEditorActionListener((v, actionId, event) -> {
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    dispatchTextInput(listener, v.getText().toString());
+                    return true;
+                }
+                return false;
+            });
             AlertDialog dialog = new AlertDialog.Builder(this)
                     .setView(input)
-                    .setPositiveButton("OK", (d, which) -> listener.onTextInput(input.getText().toString()))
-                    .setNegativeButton("Cancel", (d, which) -> listener.onTextInput(null))
-                    .setOnCancelListener(d -> listener.onTextInput(null))
+                    .setPositiveButton("OK", (d, which) -> dispatchTextInput(listener, input.getText().toString()))
+                    .setNegativeButton("Cancel", (d, which) -> dispatchTextInput(listener, null))
+                    .setOnCancelListener(d -> dispatchTextInput(listener, null))
                     .create();
             Window window = dialog.getWindow();
             if (window != null) {
-                window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
+                        | WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
             }
             dialog.show();
             input.requestFocus();
         });
+    }
+
+    private void dispatchTextInput(final SystemDevice.OnTextInputListener listener, final String text) {
+        if (renderer != null && renderer.isRenderThreadReady()) {
+            renderer.queueTask(() -> {
+                listener.onTextInput(text);
+                return true;
+            });
+        } else {
+            listener.onTextInput(text);
+        }
     }
 
     @Override
@@ -285,9 +308,38 @@ public class ForceXApp extends Activity implements SystemDevice {
         // necesita para las clip masks (clip_mask y esquinas redondeadas).
         glView.setEGLConfigChooser(8, 8, 8, 8, 16, 8);
         glView.setOnTouchListener(input_processor);
+        // Teclado físico: sus teclas llegan por onKeyEvent (y texto en RmlUIInput).
+        glView.setOnKeyListener(input_processor);
+        glView.setFocusable(true);
+        glView.setFocusableInTouchMode(true);
         glView.setRenderer(renderer);
         setContentView(glView);
+        glView.requestFocus();
         FX.device = this;
+    }
+
+    /**
+     * RmlUi pide el teclado al enfocar un campo de texto. En Android se usa el
+     * diálogo nativo: el texto aceptado llega a los {@link InputListener} por
+     * {@code onTextInput}, en el hilo de render.
+     */
+    @Override
+    public void setSoftKeyboardVisible(final boolean visible, final String currentText) {
+        if (!visible) {
+            return;
+        }
+        runOnUiThread(() -> {
+            if (text_input_open) {
+                return;
+            }
+            text_input_open = true;
+            requestTextInput(currentText, null, false, false, text -> {
+                text_input_open = false;
+                if (text != null) {
+                    input_processor.queueText(text);
+                }
+            });
+        });
     }
 
     private void stop() {

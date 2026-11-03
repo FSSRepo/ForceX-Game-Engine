@@ -28,6 +28,20 @@ public class Animator {
     private float from_time = 0, from_speed = 1;
     private boolean from_loop = false;
     private float blend_weight = 1.0f, blend_delta = 0.0f;
+    // local pose frozen when a blend is interrupted by another one; replaces from_animation as the outgoing source
+    private HashMap<SkeletonNode, Matrix4f> from_pose;
+
+    // Optional upper-body overlay, evaluated only on the selected skeleton subtree.
+    private static final int LAYER_COUNT = 4;
+    private final Animation[] layer_animations = new Animation[LAYER_COUNT];
+    private final SkeletonNode[] layer_roots = new SkeletonNode[LAYER_COUNT];
+    private final float[] layer_times = new float[LAYER_COUNT];
+    private final float[] layer_weights = new float[LAYER_COUNT];
+
+    // post-animation procedural rotation of one bone (IK-like aim), in model space around the bone origin
+    private SkeletonNode twist_node;
+    private final Vector3f twist_axis = new Vector3f();
+    private float twist_angle = 0.0f;
 
     // root motion: displacement of the root bone's position track between two updates
     private boolean root_motion = false;
@@ -35,6 +49,8 @@ public class Animator {
     private final Vector3f root_cur = new Vector3f();
     private final Vector3f root_delta = new Vector3f();
     private boolean root_valid = false;
+    // the root bone keeps its first-frame position, so the caller can move the character by the root delta instead
+    private boolean root_locked = false;
 
     /**
      * Constructor for the Animator class.
@@ -55,6 +71,7 @@ public class Animator {
      */
     public void doAnimation(Animation anim, boolean inverse) {
         from_animation = null;
+        from_pose = null;
         blend_weight = 1.0f;
         startAnimation(anim, inverse);
     }
@@ -69,6 +86,14 @@ public class Animator {
      * @param blendDelta Weight gained per second by the new animation; zero or less cuts at once.
      */
     public void blendTo(Animation anim, boolean inverse, float blendDelta) {
+        // interrupting a running blend: freeze the visible mixed pose as the outgoing source, so it does not pop
+        HashMap<SkeletonNode, Matrix4f> frozen = null;
+        if (animation != null && blendDelta > 0.0f && from_animation != null && blend_weight < 1.0f) {
+            frozen = new HashMap<SkeletonNode, Matrix4f>();
+            capturePose(skeleton, frozen);
+        }
+        clearBoneLayer();
+        from_pose = frozen;
         if (animation != null && blendDelta > 0.0f) {
             from_animation = animation;
             from_time = control.time;
@@ -81,6 +106,71 @@ public class Animator {
             blend_weight = 1.0f;
         }
         startAnimation(anim, inverse);
+    }
+
+    /** Applies an independently timed animation over one skeleton subtree; call it every frame. */
+    public void setBoneLayer(Animation anim, float time, SkeletonNode root, float weight) {
+        setAnimationLayer(0, anim, time, root, weight);
+    }
+
+    /** Sets a full-body blend layer at the requested normalized animation phase. */
+    public void setFullBodyAnimationLayer(int index, Animation anim, float normalizedTime, float weight) {
+        float t = anim == null ? 0.0f : Math.max(0.0f, Math.min(1.0f, normalizedTime)) * anim.getDuration();
+        setAnimationLayer(index, anim, t, null, weight);
+    }
+
+    /** Sets one of the ordered animation layers; later layers blend over earlier ones. */
+    public void setAnimationLayer(int index, Animation anim, float time, SkeletonNode root, float weight) {
+        if (index < 0 || index >= LAYER_COUNT) throw new IndexOutOfBoundsException("animation layer " + index);
+        if (anim == null || weight <= 0.0f) {
+            clearAnimationLayer(index);
+            return;
+        }
+        layer_animations[index] = anim;
+        layer_times[index] = Math.max(0.0f, Math.min(time, anim.getDuration()));
+        layer_roots[index] = root;
+        layer_weights[index] = Math.max(0.0f, Math.min(1.0f, weight));
+    }
+
+    /**
+     * Rotates {@code node} (and its children) after the animation by {@code degrees} around
+     * {@code modelAxis} (model space, through the bone origin). Pass a null node or 0 to disable.
+     */
+    public void setBoneTwist(SkeletonNode node, Vector3f modelAxis, float degrees) {
+        twist_node = node;
+        if (modelAxis != null) twist_axis.set(modelAxis);
+        twist_angle = degrees;
+    }
+
+    /**
+     * Giro (radianes, sobre el eje vertical del modelo) que la animacion actual, mezclada con la anterior, da al hueso raiz respecto
+     * a las animaciones de locomocion (cuyo adelante es -X). Las de arma (Gun_stand, GunMove_*, *_fire) llevan 48-82 grados de giro:
+     * quien las usa lo compensa girando el modelo en sentido contrario para que el cuerpo mire al rumbo del ped.
+     */
+    public float getRootYaw() {
+        if (animation == null) {
+            return 0.0f;
+        }
+        SkeletonNode root = skeleton.findByBoneId(animation.getRootBone().boneID);
+        if (root == null) {
+            return 0.0f;
+        }
+        Matrix4f m = poseLocal(root);
+        double yaw = Math.atan2(m.data[Matrix4f.M11], m.data[Matrix4f.M01]) - Math.PI;
+        while (yaw > Math.PI) yaw -= 2.0 * Math.PI;
+        while (yaw < -Math.PI) yaw += 2.0 * Math.PI;
+        return (float) yaw;
+    }
+
+    public void clearBoneLayer() {
+        for (int i = 0; i < LAYER_COUNT; i++) clearAnimationLayer(i);
+    }
+
+    public void clearAnimationLayer(int index) {
+        if (index < 0 || index >= LAYER_COUNT) throw new IndexOutOfBoundsException("animation layer " + index);
+        layer_animations[index] = null;
+        layer_roots[index] = null;
+        layer_times[index] = layer_weights[index] = 0.0f;
     }
 
     private void startAnimation(Animation anim, boolean inverse) {
@@ -136,6 +226,14 @@ public class Animator {
         if (enabled && animation != null) {
             sampleRoot(control.time, root_prev);
         }
+    }
+
+    /**
+     * Pins the root bone's position track to its first frame. With {@link #setRootMotion} the displacement is then
+     * reported by {@link #getRootDelta()} only, so the owner can move the character while the pose stays in place.
+     */
+    public void setRootLocked(boolean locked) {
+        root_locked = locked;
     }
 
     /**
@@ -214,6 +312,7 @@ public class Animator {
         if (blend_weight >= 1.0f) {
             blend_weight = 1.0f;
             from_animation = null;
+            from_pose = null;
         }
     }
 
@@ -336,6 +435,8 @@ public class Animator {
         if (!bone.hasPosition) {
             frame.modelMatrix.getLocation(tmp);
             animKey.setLocation(tmp.x, tmp.y, tmp.z);
+        } else if (root_locked && bone == anim.getRootBone() && bone.samplePosition(0.0f, tmp)) {
+            animKey.setLocation(tmp.x, tmp.y, tmp.z);
         }
         return animKey;
     }
@@ -357,12 +458,35 @@ public class Animator {
      *
      * @param frame The skeleton node to update.
      */
-    private void updateBoneMatrix(SkeletonNode frame) {
+    private Matrix4f poseLocal(SkeletonNode frame) {
         Matrix4f local = localMatrix(frame, animation, control.time);
         if (from_animation != null && blend_weight < 1.0f) {
-            Matrix4f other = localMatrix(frame, from_animation, from_time);
+            Matrix4f other = from_pose != null && from_pose.containsKey(frame)
+                    ? from_pose.get(frame) : localMatrix(frame, from_animation, from_time);
             local = blendMatrices(other, local, blend_weight);
         }
+        for (int i = 0; i < LAYER_COUNT; i++) {
+            Animation layerAnimation = layer_animations[i];
+            if (layerAnimation != null && layer_weights[i] > 0.0f && isInSubtree(frame, layer_roots[i])
+                    && layerAnimation.findBone(frame.boneID) != null) {
+                Matrix4f layer = localMatrix(frame, layerAnimation, layer_times[i]);
+                local = blendMatrices(local, layer, layer_weights[i]);
+            }
+        }
+        return local;
+    }
+
+    private void capturePose(SkeletonNode frame, HashMap<SkeletonNode, Matrix4f> out) {
+        Matrix4f copy = new Matrix4f();
+        copy.set(poseLocal(frame));
+        out.put(frame, copy);
+        for (SkeletonNode child : frame.children) {
+            capturePose(child, out);
+        }
+    }
+
+    private void updateBoneMatrix(SkeletonNode frame) {
+        Matrix4f local = poseLocal(frame);
         SkeletonNode parent = frame.parent;
         if (parent != null) {
             Matrix4f pm = animMatrices.get(parent);
@@ -370,9 +494,25 @@ public class Animator {
         } else {
             animMatrices.put(frame, local);
         }
+        if (frame == twist_node && twist_angle != 0.0f) {
+            Matrix4f m = animMatrices.get(frame);
+            Vector3f p = m.getLocation(null);
+            Matrix4f rot = Matrix4f.fromTransform(Quaternion.fromAxisAngle(twist_axis, twist_angle), new Vector3f());
+            Matrix4f to_origin = Matrix4f.fromTransform(new Quaternion(), new Vector3f(-p.x, -p.y, -p.z));
+            Matrix4f back = Matrix4f.fromTransform(new Quaternion(), p);
+            animMatrices.put(frame, back.mult(null, rot).mult(null, to_origin).mult(null, m));
+        }
         for (SkeletonNode child : frame.children) {
             updateBoneMatrix(child);
         }
+    }
+
+    private static boolean isInSubtree(SkeletonNode node, SkeletonNode root) {
+        if (root == null) return true;
+        for (SkeletonNode current = node; current != null; current = current.parent) {
+            if (current == root) return true;
+        }
+        return false;
     }
 
     /**
@@ -413,5 +553,6 @@ public class Animator {
         boneMatrices = null;
         control = null;
         from_animation = null;
+        from_pose = null;
     }
 }

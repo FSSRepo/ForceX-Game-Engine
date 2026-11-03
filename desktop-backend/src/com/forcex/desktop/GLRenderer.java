@@ -142,8 +142,11 @@ public class GLRenderer implements GPUDevice {
     }
 
     void resize(int width, int height) {
+        // a minimized window reports a 0x0 framebuffer; keep the last valid size
+        if (width <= 0 || height <= 0) return;
         FX.gl.glViewport(width, height);
         this.width = width;
+        this.height = height;
         game.resize(width, height);
     }
 
