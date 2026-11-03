@@ -23,6 +23,7 @@
 	
    -------------------------------------------------------------------------- */
    
+#include <climits>
 #include "singlecolourfit.h"
 #include "colourset.h"
 #include "colourblock.h"
